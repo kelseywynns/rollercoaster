@@ -1,10 +1,16 @@
-import { synthesizeEffects } from "./effects-audio.js";
+import {
+  synthesizeEffects,
+  makeLimiterCurve,
+  DEFAULT_MASTER_VOLUME,
+  DEFAULT_EFFECTS_VOLUME,
+} from "./effects-audio.js";
+import { DEFAULT_DURATION } from "./ride.js";
 const midi = (note) => 440 * 2 ** ((note - 69) / 12);
 
 export class Soundtrack {
   constructor() {
-    this.volume = 0.5;
-    this.effectsVolume = 0.35;
+    this.volume = DEFAULT_MASTER_VOLUME;
+    this.effectsVolume = DEFAULT_EFFECTS_VOLUME;
     this.muted = false;
     this.file = null;
     this.url = null;
@@ -25,7 +31,16 @@ export class Soundtrack {
       this.effectsGain = this.context.createGain();
       this.effectsGain.gain.value = this.effectsVolume;
       this.effectsGain.connect(this.master);
-      this.master.connect(this.analyser);
+      // Preserve the transient envelope until the final safety knee. This is
+      // exactly the transfer function used by the video export mixer.
+      this.headroom = this.context.createGain();
+      this.headroom.gain.value = 0.25;
+      this.limiter = this.context.createWaveShaper();
+      this.limiter.curve = makeLimiterCurve();
+      this.limiter.oversample = "none";
+      this.master.connect(this.headroom);
+      this.headroom.connect(this.limiter);
+      this.limiter.connect(this.analyser);
       this.analyser.connect(this.context.destination);
       this.mediaSource = this.context.createMediaElementSource(this.element);
       this.mediaSource.connect(this.master);
@@ -126,7 +141,7 @@ export class Soundtrack {
       0.04,
     );
   }
-  async play(elapsed = 0, duration = 150) {
+  async play(elapsed = 0, duration = DEFAULT_DURATION) {
     await this.init();
     this.duration = duration;
     this.active = true;

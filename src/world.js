@@ -19,6 +19,7 @@ import { makeRushPass } from "./rush-pass.js";
 import { Stagecraft } from "./stagecraft.js";
 import { ArcadeArena } from "./arena.js";
 import { Encounters } from "./encounters.js";
+import { Overdrive } from "./overdrive.js";
 
 const up = new THREE.Vector3(0, 1, 0);
 const dummy = new THREE.Object3D();
@@ -173,13 +174,17 @@ export class VoxelWorld {
     });
     this.stagecraft = new Stagecraft(this.scene, (t) => this.frameAt(t));
     this.makeCar();
+    this.overdrive = new Overdrive(this.scene, this.camera, {
+      frameAt: (t) => this.frameAt(t),
+      motion: this.motion,
+    });
     this.combat = new ArcadeCombat(this.scene, this.camera, {
       frameAt: (t) => this.frameAt(t),
       motion: this.motion,
     });
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.4, 0.5, 0.6);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.85, 0.5, 0.85);
     this.composer.addPass(this.bloom);
     this.rushPass = makeRushPass();
     this.composer.addPass(this.rushPass);
@@ -885,20 +890,19 @@ export class VoxelWorld {
       );
       this.camera.rotateY(this.look.x * 0.34);
       this.camera.rotateX(this.look.y * 0.19 + (calm ? 0 : pose.pitch));
-      const rush = clamp((speed - 12) / 65);
+      const rush = clamp((speed - 20) / 90);
       this.camera.fov = calm
         ? 65
-        : 59 +
-          rush * 20 +
-          boostPower(t) * 6 +
-          pose.landing * 2 +
+        : (bossFraming ? 65 + rush * 12 : 62 + rush * 31) +
+          boostPower(t) * 9 +
+          pose.landing * 4 +
           this.energy * 1.0;
       // A restrained vertical tremor reads as track contact; lift hills feel steadier.
       if (!calm)
         this.camera.position.addScaledVector(
           normal,
-          Math.sin(time * 27) * (pose.airborne ? 0 : 0.028 * rush) +
-            Math.sin(time * 43) * pose.landing * 0.11,
+          Math.sin(time * 27) * (pose.airborne ? 0 : 0.065 * rush) +
+            Math.sin(time * 43) * pose.landing * 0.18,
         );
     }
     this.camera.updateProjectionMatrix();
@@ -911,11 +915,29 @@ export class VoxelWorld {
       landing,
       arena: this.arena,
     });
+    if (!calm && mode !== "idle") {
+      const shot = this.combat.shotKick || 0,
+        impact = this.combat.impact || 0;
+      this.camera.rotateX(shot * 0.012 + Math.sin(time * 43) * impact * 0.02);
+      this.camera.rotateZ(Math.sin(time * 51) * impact * 0.012);
+      this.camera.updateMatrixWorld(true);
+    }
+    this.overdrive.update({
+      route: motion.t,
+      time,
+      duration,
+      speed: motion.speed,
+      active: mode !== "idle",
+      calm,
+    });
     this.rushPass.uniforms.amount.value =
       calm || mode === "idle"
         ? 0
-        : clamp((motion.speed - 35) / 75) * 0.038 +
-          boostPower(motion.t) * 0.022;
+        : (clamp((motion.speed - 30) / 85) * 0.105 +
+            boostPower(motion.t) * 0.095) *
+          (this.arena.actors.visible ? 0.5 : 1);
+    this.rushPass.uniforms.kick.value =
+      calm || mode === "idle" ? 0 : boostPower(motion.t);
     this.sky.position.copy(this.camera.position);
     this.moon.position.set(
       this.camera.position.x + 360,
@@ -944,7 +966,8 @@ export class VoxelWorld {
     this.scene.fog.density = 0.0008 + inside * 0.002;
     this.headlight.visible = mode !== "idle";
     this.headlight.intensity = this.arena.actors.visible ? 3 : 12;
-    this.bloom.strength = 0.3 + this.energy * 0.1;
+    this.bloom.strength =
+      0.82 + this.energy * 0.12 + boostPower(motion.t) * 0.09;
     this.composer.render();
   }
 }

@@ -19,21 +19,21 @@ export function createMotionProfile(curve, samples = 3600) {
     const previousSpeed = speed,
       dh = heights[i] - heights[i - 1];
     if (t < 0.012) {
-      speed = 3.2 + 42.8 * Math.sin(((t / 0.012) * Math.PI) / 2);
+      speed = 3.2 + 107 * Math.sin(((t / 0.012) * Math.PI) / 2);
     } else if (t < 0.166) {
       const crest = clamp((t - 0.135) / 0.031);
-      speed = (56 + (28 * t) / 0.166) * (1 - 0.72 * crest * crest);
+      speed = (150 + (44 * t) / 0.166) * (1 - 0.84 * crest * crest);
     } else {
-      const boost = (t > 0.66 ? 5.4 : 0.75) + boostPower(t) * 46;
-      const drag = 0.00065 * speed * speed;
+      const boost = (t > 0.66 ? 16 : 1.5) + boostPower(t) * 160;
+      const drag = 0.00046 * speed * speed;
       const liftFloor = t > 0.66 ? 30 : 11;
       speed = Math.sqrt(
         Math.max(
           liftFloor * liftFloor,
-          speed * speed - 2 * 13.2 * dh + 2 * (boost - drag) * ds,
+          speed * speed - 2 * 22 * dh + 2 * (boost - drag) * ds,
         ),
       );
-      speed = Math.min(speed, t > 0.66 ? 113 : 88);
+      speed = Math.min(speed, t > 0.66 ? 210 : 145);
     }
     elapsed += ds / ((previousSpeed + speed) / 2);
     times[i] = elapsed;

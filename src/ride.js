@@ -1,4 +1,4 @@
-export const DEFAULT_DURATION = 110;
+export const DEFAULT_DURATION = 78;
 
 export const CHAPTERS = [
   {

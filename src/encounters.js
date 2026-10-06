@@ -99,8 +99,8 @@ export class Encounters {
     scene.add(this.root);
     this.sentinel = makeSentry();
     this.root.add(this.sentinel);
-    this.sentinelLight = new THREE.PointLight("#ff174d", 270, 50, 2);
-    this.sentinelLight.position.set(0, -2, 7);
+    this.sentinelLight = new THREE.PointLight("#ff174d", 45, 50, 2);
+    this.sentinelLight.position.set(0, -3, 11);
     this.sentinel.add(this.sentinelLight);
     this.companion = makeCompanion();
     this.root.add(this.companion);

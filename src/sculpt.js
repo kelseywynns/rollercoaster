@@ -164,7 +164,7 @@ export function makeSentry() {
     },
     "#e71637",
     0.67,
-    0.18,
+    0.64,
   );
   for (const side of [-1, 1]) {
     voxelEllipsoid(
@@ -173,7 +173,7 @@ export function makeSentry() {
       [1.85, 2.45, 0.95],
       "#dfebf3",
       0.43,
-      0.035,
+      0.065,
     );
     voxelEllipsoid(
       root,
@@ -181,7 +181,7 @@ export function makeSentry() {
       [0.8, 1.2, 0.35],
       "#123aa1",
       0.34,
-      0.04,
+      0.14,
     );
   }
   root.userData.cells = collectVoxels(root);
@@ -202,16 +202,22 @@ export function makeCompanion() {
         x * x + y * y + z * z < 20.25 && !(x > 0.2 && Math.abs(y) < x * angle),
       "#ffd414",
       0.51,
-      0.16,
+      0.68,
     );
-    voxelEllipsoid(
+    const eye = voxelEllipsoid(
       group,
-      [0.15, 2.35, 3.58],
-      [0.48, 0.67, 0.35],
-      "#100f14",
+      [0.15, 2.35, 4.08],
+      [0.6, 0.84, 0.36],
+      "#07070c",
       0.24,
       0.0,
     );
+    // A forward, ink-dark pupil remains readable inside the golden halo.
+    eye.material.metalness = 0.05;
+    eye.material.roughness = 0.7;
+    eye.material.clearcoat = 0;
+    eye.material.envMapIntensity = 0.05;
+    eye.material.specularIntensity = 0.1;
     shapes.push(group);
   }
   root.userData.frames = shapes;
@@ -221,8 +227,8 @@ export function makeCompanion() {
 export function makeDrake() {
   const root = new THREE.Group();
   root.name = "Centipede";
-  voxelEllipsoid(root, [0, 0, 0], [5.6, 4.5, 4.8], "#9eb721", 0.69, 0.14);
-  voxelEllipsoid(root, [0, -1.1, 4], [4.2, 2.1, 2.2], "#b84b1c", 0.59, 0.12);
+  voxelEllipsoid(root, [0, 0, 0], [5.6, 4.5, 4.8], "#adcd1b", 0.69, 0.64);
+  voxelEllipsoid(root, [0, -1.1, 4], [4.2, 2.1, 2.2], "#d34b19", 0.59, 0.5);
   for (const side of [-1, 1]) {
     voxelEllipsoid(
       root,
@@ -230,7 +236,7 @@ export function makeDrake() {
       [1.55, 1.9, 0.9],
       "#f7e5b7",
       0.4,
-      0.02,
+      0.06,
     );
     voxelEllipsoid(
       root,
@@ -247,7 +253,7 @@ export function makeDrake() {
         [0.5, 0.75, 0.5],
         "#d63c57",
         0.42,
-        0.12,
+        0.62,
       );
   }
   return root;
@@ -278,7 +284,7 @@ export function makeBarrel() {
       ];
     },
     0.63,
-    0.1,
+    0.55,
   );
   root.userData.cells = collectVoxels(root);
   return root;
@@ -300,14 +306,14 @@ export function makeTitan() {
     skin = "#be8048",
     palm = "#b77943";
   const torso = joint("torso", root, [0, 0, 0]);
-  voxelEllipsoid(torso, [0, 22, -2], [12.5, 15, 9.5], fur, 1.2, 0.12);
-  voxelEllipsoid(torso, [0, 37, -3], [18, 16, 11], fur, 1.22, 0.13);
-  voxelEllipsoid(torso, [0, 33, 7.2], [11.5, 13.5, 3.6], skin, 1.05, 0.1);
+  voxelEllipsoid(torso, [0, 22, -2], [12.5, 15, 9.5], fur, 1.2, 0.82);
+  voxelEllipsoid(torso, [0, 37, -3], [18, 16, 11], fur, 1.22, 0.9);
+  voxelEllipsoid(torso, [0, 33, 7.2], [11.5, 13.5, 3.6], skin, 1.05, 0.5);
   const head = joint("head", torso, [0, 54, 2]);
-  voxelEllipsoid(head, [0, 0, -0.8], [12, 10.5, 9.2], fur, 1.05, 0.13);
+  voxelEllipsoid(head, [0, 0, -0.8], [12, 10.5, 9.2], fur, 1.05, 0.86);
   // Heavy mask, forward muzzle, nostrils and a dark lip define the gorilla face.
-  voxelEllipsoid(head, [0, 1.1, 7.1], [8.9, 6.1, 3.6], skin, 0.85, 0.08);
-  voxelEllipsoid(head, [0, -4, 9.7], [10, 4.7, 5.1], skin, 0.84, 0.08);
+  voxelEllipsoid(head, [0, 1.1, 7.1], [8.9, 6.1, 3.6], skin, 0.85, 0.4);
+  voxelEllipsoid(head, [0, -4, 9.7], [10, 4.7, 5.1], skin, 0.84, 0.4);
   voxelEllipsoid(head, [0, -5.3, 14.2], [7.1, 1.6, 0.65], shadeFur, 0.55, 0.01);
   voxelEllipsoid(
     head,
@@ -315,9 +321,9 @@ export function makeTitan() {
     [5.8, 0.45, 0.25],
     "#e3c7a0",
     0.42,
-    0.01,
+    0.045,
   );
-  voxelEllipsoid(head, [0, -1.3, 13], [5.4, 2.5, 2.1], "#ad6e3f", 0.65, 0.06);
+  voxelEllipsoid(head, [0, -1.3, 13], [5.4, 2.5, 2.1], "#ad6e3f", 0.65, 0.25);
   for (const side of [-1, 1]) {
     voxelEllipsoid(
       head,
@@ -333,7 +339,7 @@ export function makeTitan() {
       [2.55, 2.1, 1.2],
       "#ede1c4",
       0.48,
-      0.025,
+      0.085,
     );
     voxelEllipsoid(
       head,
@@ -349,7 +355,7 @@ export function makeTitan() {
       [4.4, 1.9, 1.6],
       shadeFur,
       0.72,
-      0.07,
+      0.035,
     );
     voxelEllipsoid(
       head,
@@ -357,21 +363,21 @@ export function makeTitan() {
       [2.4, 3.1, 1.65],
       skin,
       0.67,
-      0.06,
+      0.34,
     );
     const arm = joint(side < 0 ? "leftArm" : "rightArm", torso, [
       side * 17,
       43,
       -1,
     ]);
-    voxelEllipsoid(arm, [side * 2, -8, 0], [7.8, 13, 7.7], fur, 1.2, 0.13);
-    voxelEllipsoid(arm, [side * 3, -22, 2], [7, 10, 7.2], fur, 1.15, 0.12);
+    voxelEllipsoid(arm, [side * 2, -8, 0], [7.8, 13, 7.7], fur, 1.2, 0.86);
+    voxelEllipsoid(arm, [side * 3, -22, 2], [7, 10, 7.2], fur, 1.15, 0.82);
     const hand = joint(side < 0 ? "leftHand" : "rightHand", arm, [
       side * 3,
       -30,
       4,
     ]);
-    voxelEllipsoid(hand, [0, 0, 0], [7.6, 5.6, 7], palm, 1, 0.09);
+    voxelEllipsoid(hand, [0, 0, 0], [7.6, 5.6, 7], palm, 1, 0.52);
     for (let f = 0; f < 4; f++)
       voxelEllipsoid(
         hand,
@@ -379,15 +385,15 @@ export function makeTitan() {
         [1.5, 3.5, 2.2],
         skin,
         0.73,
-        0.09,
+        0.48,
       );
     const leg = joint(side < 0 ? "leftLeg" : "rightLeg", torso, [
       side * 8,
       7,
       -1,
     ]);
-    voxelEllipsoid(leg, [0, 0, 0], [6.5, 10, 6.8], fur, 1.1, 0.11);
-    voxelEllipsoid(leg, [0, -8, 5], [6.8, 3.7, 9], palm, 1.0, 0.08);
+    voxelEllipsoid(leg, [0, 0, 0], [6.5, 10, 6.8], fur, 1.1, 0.8);
+    voxelEllipsoid(leg, [0, -8, 5], [6.8, 3.7, 9], palm, 1.0, 0.48);
   }
   // Red tie and simple yellow DK monogram: instantly recognizable at coaster distance.
   for (let y = 0; y < 10; y++)
@@ -399,7 +405,7 @@ export function makeTitan() {
         [0.61, 0.64, 0.48],
         "#d31429",
         0.52,
-        0.16,
+        0.9,
       );
     }
   const letters = ["XX.X.X", "X.XXX.", "X.XXX.", "XX.X.X"];
@@ -412,17 +418,22 @@ export function makeTitan() {
           [0.34, 0.38, 0.25],
           "#f2c334",
           0.29,
-          0.13,
+          0.28,
         );
     }),
   );
   root.userData.parts = parts;
   root.traverse((mesh) => {
     if (!mesh.isMesh) return;
-    mesh.material.roughness = 0.4;
-    mesh.material.clearcoat = 0.25;
-    mesh.material.clearcoatRoughness = 0.32;
-    mesh.material.envMapIntensity = 0.26;
+    // Amber cores and tinted reflections keep the gorilla's brown silhouette
+    // while the beveled cube faces sparkle like illuminated glass.
+    mesh.material.metalness = 0.32;
+    mesh.material.roughness = 0.22;
+    mesh.material.clearcoat = 0.46;
+    mesh.material.clearcoatRoughness = 0.22;
+    mesh.material.specularColor.set("#ffd2a0");
+    mesh.material.specularIntensity = 0.58;
+    mesh.material.envMapIntensity = 0.4;
   });
   return root;
 }

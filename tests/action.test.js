@@ -8,6 +8,7 @@ import { ArcadeCombat, combatEvents } from "../src/combat.js";
 import { BOOSTS, JUMPS } from "../src/story.js";
 import { Stagecraft } from "../src/stagecraft.js";
 import { DEFAULT_DURATION } from "../src/ride.js";
+import { Overdrive } from "../src/overdrive.js";
 
 const world = Object.create(VoxelWorld.prototype);
 world.curve = new THREE.CatmullRomCurve3(
@@ -117,8 +118,56 @@ test("chapter marquees clear the airborne camera path", () => {
 
 test("opening threat arrives before the first drop in the default film", () => {
   const first = combatEvents(motion, DEFAULT_DURATION)[0];
-  assert.ok(first.spawnTime > 9 && first.spawnTime < 13);
+  assert.ok(first.spawnTime > 6 && first.spawnTime < 8);
   assert.ok(first.killTime < motion.progressAt(0.166) * DEFAULT_DURATION);
+});
+
+test("slipstream, booster arcs and visual jokes replay identically after seeking", () => {
+  const overdrive = new Overdrive(
+    new THREE.Scene(),
+    new THREE.PerspectiveCamera(),
+    { frameAt, motion },
+  );
+  const at = (route) =>
+    overdrive.update({
+      route,
+      time: motion.progressAt(route) * DEFAULT_DURATION,
+      duration: DEFAULT_DURATION,
+      speed: motion.sample(motion.progressAt(route)).speed,
+      active: true,
+      calm: false,
+    });
+  at(0.289);
+  assert.ok(
+    overdrive.streaks.visible &&
+      overdrive.arcs.visible &&
+      overdrive.brake.visible,
+  );
+  const first = Array.from(overdrive.streaks.instanceMatrix.array);
+  const brake = overdrive.brake.position.clone();
+  at(0.8);
+  at(0.1);
+  at(0.289);
+  assert.deepEqual(Array.from(overdrive.streaks.instanceMatrix.array), first);
+  assert.ok(overdrive.brake.position.equals(brake));
+  const matrix = new THREE.Matrix4();
+  for (const mesh of [overdrive.streaks, overdrive.arcs])
+    for (let i = 0; i < mesh.count; i++) {
+      mesh.getMatrixAt(i, matrix);
+      assert.ok(
+        matrix.elements.every(Number.isFinite) && matrix.determinant() > 0,
+      );
+    }
+  overdrive.update({
+    route: 0.289,
+    time: 20,
+    duration: 78,
+    speed: 100,
+    active: true,
+    calm: true,
+  });
+  assert.equal(overdrive.streaks.visible, false);
+  assert.equal(overdrive.arcs.visible, false);
 });
 
 test("combat kills persist, replay exactly after seeks, and never create singular fragments", () => {

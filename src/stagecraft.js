@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { TARGETS, ARENA, smooth } from "./story.js";
 export const FINAL_SCORE =
   TARGETS.length * 100 + ARENA.throws.length * 500 + 5000;
+export const FINAL_GATE_ROUTE = 0.956;
 
 export class Stagecraft {
   constructor(scene, frameAt) {
@@ -24,12 +25,13 @@ export class Stagecraft {
       return m;
     };
     const signs = [
-      [0.023, "READY, PLAYER ONE", "MAZE RUN  /  01", "#e5bd57"],
-      [0.275, "INCOMING", "INVADER SECTOR  /  02", "#83c59c"],
-      [0.512, "DONKEY KONG", "BARREL TROUBLE  /  03", "#e5a25a"],
-      [0.824, "FINAL WAVE", "HIGH SCORE  /  04", "#5ec7e4"],
+      [0.023, "READY, PLAYER ONE", "BRAKES SOLD SEPARATELY", "#e5bd57"],
+      [0.164, "SPEED LIMIT: LOL", "GRAVITY HAS THE WHEEL", "#ff8137"],
+      [0.275, "INCOMING", "PEW PEW DEPARTMENT", "#83c59c"],
+      [0.512, "DONKEY KONG", "EXPRESS BARREL DELIVERY", "#e5a25a"],
+      [0.824, "FINAL WAVE", "PHYSICS HAS LEFT THE CHAT", "#5ec7e4"],
       [
-        0.956,
+        FINAL_GATE_ROUTE,
         "STAGE CLEAR",
         `${FINAL_SCORE.toLocaleString("en-US")}  /  PERFECT RUN`,
         "#e5bd57",

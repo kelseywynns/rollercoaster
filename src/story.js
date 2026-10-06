@@ -38,7 +38,7 @@ export const ARENA = {
 };
 
 // Visible induction pads, real bursts of acceleration, and short broken-rail jumps.
-export const BOOSTS = [0.281, 0.409, 0.678, 0.842, 0.925];
+export const BOOSTS = [0.173, 0.281, 0.409, 0.678, 0.842, 0.925];
 export const JUMPS = [
   { start: 0.321, end: 0.334, height: 6.5 },
   { start: 0.708, end: 0.723, height: 9 },
@@ -79,3 +79,4 @@ export const BOSS_HITS = [
   0.518, 0.524, 0.544, 0.55, 0.568, 0.578, 0.59, 0.594, 0.598, 0.601,
 ];
 export const BARREL_HIT_FRACTIONS = [0.37, 0.53, 0.68];
+export const GAGS = { brake: 0.281, bananaDelay: 2.25, bananaLength: 1.7 };

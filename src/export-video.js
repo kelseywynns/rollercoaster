@@ -1,5 +1,10 @@
-import { synthesizeEffects, mixChannels } from "./effects-audio.js";
-import { FINAL_SCORE } from "./stagecraft.js";
+import {
+  synthesizeEffects,
+  mixChannels,
+  DEFAULT_MASTER_VOLUME,
+  DEFAULT_EFFECTS_VOLUME,
+} from "./effects-audio.js";
+import { FINAL_SCORE, FINAL_GATE_ROUTE } from "./stagecraft.js";
 import { CRASH, ARENA } from "./story.js";
 import {
   AudioBufferSource,
@@ -73,8 +78,8 @@ export async function renderVideo({
   world,
   duration,
   file,
-  volume = 0.5,
-  effectsVolume = 0.35,
+  volume = DEFAULT_MASTER_VOLUME,
+  effectsVolume = DEFAULT_EFFECTS_VOLUME,
   width = 1920,
   height = 1080,
   fps = 60,
@@ -239,8 +244,12 @@ export async function renderVideo({
           context.fillRect(0, 0, width, height);
         }
       }
-      if (!preview && timestamp > duration - 2.5) {
-        const alpha = Math.min(1, (timestamp - duration + 2.5) / 0.55);
+      const cardStart = Math.max(
+        duration - 2.5,
+        world.motion.progressAt(FINAL_GATE_ROUTE) * duration + 0.42,
+      );
+      if (!preview && timestamp > cardStart) {
+        const alpha = Math.min(1, (timestamp - cardStart) / 0.4);
         context.save();
         context.globalAlpha = alpha;
         context.textAlign = "center";

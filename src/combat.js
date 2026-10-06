@@ -144,28 +144,224 @@ function makeTarget(cue, id) {
   group.add(mesh);
   return { group, cells, mesh, turret, tint };
 }
-function beam(tint, width = 0.18) {
+function beam(tint, width = 0.52) {
   const group = new THREE.Group();
-  const core = new THREE.Mesh(
-    box,
-    new THREE.MeshBasicMaterial({ color: tint, toneMapped: false }),
+  // A narrow hot filament sits inside colored plasma. Only the faint fringe
+  // adds light: adding the whole sheath washed the shot and target to white.
+  for (const [scale, shade, opacity, additive] of [
+    [0.2, "#d9fff4", 1, false],
+    [1, tint, 0.78, false],
+    [2.5, tint, 0.065, true],
+    [4.5, tint, 0.012, true],
+  ]) {
+    const layer = new THREE.Mesh(
+      box,
+      new THREE.MeshBasicMaterial({
+        color: shade,
+        transparent: opacity < 1,
+        opacity,
+        depthWrite: opacity === 1,
+        blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+        toneMapped: false,
+      }),
+    );
+    layer.scale.set(width * scale, width * scale, 1);
+    group.add(layer);
+  }
+  return group;
+}
+
+function makeCannon(camera, side) {
+  const gun = new THREE.Group();
+  gun.name =
+    side < 0
+      ? "Thunder / left plasma cannon"
+      : "Lightning / right plasma cannon";
+  gun.position.set(side * 2.2, -1.53, -3.15);
+  camera.add(gun);
+  const body = new THREE.MeshStandardMaterial({
+    color: "#183146",
+    metalness: 0.66,
+    roughness: 0.38,
+  });
+  const armor = new THREE.MeshStandardMaterial({
+    color: "#426279",
+    metalness: 0.72,
+    roughness: 0.34,
+  });
+  const orange = new THREE.MeshStandardMaterial({
+    color: "#ef721d",
+    metalness: 0.35,
+    roughness: 0.4,
+  });
+  const black = new THREE.MeshStandardMaterial({
+    color: "#071525",
+    metalness: 0.5,
+    roughness: 0.36,
+  });
+  const energy = new THREE.MeshBasicMaterial({
+    color: side < 0 ? "#27e4ff" : "#a3ff56",
+    toneMapped: false,
+  });
+  const hot = new THREE.MeshBasicMaterial({
+    color: "#dcfff1",
+    toneMapped: false,
+  });
+  const block = (parent, pos, size, mat) => {
+    const m = new THREE.Mesh(pixelGeometry, mat);
+    m.position.set(...pos);
+    m.scale.set(...size);
+    parent.add(m);
+    return m;
+  };
+  // A broad, stepped receiver with armored cheeks and an underslung hydraulic shoe.
+  block(gun, [0, -0.04, 0], [1.02, 0.78, 1.42], body);
+  block(gun, [0, -0.43, 0.26], [0.7, 0.23, 1.76], black);
+  for (const edge of [-1, 1]) {
+    block(gun, [edge * 0.5, 0.04, 0.15], [0.19, 0.64, 1.5], armor);
+    block(gun, [edge * 0.51, 0.38, 0.21], [0.2, 0.16, 1.05], orange);
+    block(gun, [edge * 0.43, -0.26, 0.1], [0.09, 0.065, 1.4], energy);
+  }
+  block(gun, [side * 0.72, -0.04, -0.1], [0.44, 0.56, 1.02], orange);
+  for (let i = 0; i < 4; i++)
+    block(gun, [side * 0.73, 0.26, -0.46 + i * 0.22], [0.4, 0.1, 0.095], black);
+  // A visible reactor instead of a featureless tube; split armor exposes its glow.
+  const chamber = block(gun, [0, 0.08, 0.97], [0.48, 0.48, 0.9], energy);
+  for (const z of [0.59, 1.32]) {
+    block(gun, [0, 0.11, z], [0.83, 0.77, 0.18], black);
+    for (const edge of [-1, 1])
+      block(gun, [edge * 0.31, 0.09, z - 0.04], [0.08, 0.55, 0.21], energy);
+  }
+  const cooling = [];
+  for (let i = 0; i < 4; i++) {
+    const fin = block(
+      gun,
+      [0, 0.46, 0.53 + i * 0.23],
+      [0.72, 0.075, 0.085],
+      armor,
+    );
+    cooling.push(fin);
+  }
+  const sleeve = new THREE.Group();
+  sleeve.position.z = 1.38;
+  gun.add(sleeve);
+  const rotor = new THREE.Group();
+  sleeve.add(rotor);
+  // Three separated barrel rails leave a readable, rotating silhouette.
+  for (let i = 0; i < 3; i++) {
+    const angle = (i / 3) * Math.PI * 2;
+    const x = Math.cos(angle) * 0.3,
+      y = Math.sin(angle) * 0.3;
+    block(rotor, [x, y, 0.53], [0.32, 0.32, 1.52], armor);
+    block(rotor, [x, y, 0.39], [0.19, 0.19, 1.76], black);
+    block(rotor, [x, y, 1.19], [0.34, 0.34, 0.24], orange);
+    block(rotor, [x, y, 1.32], [0.16, 0.16, 0.035], energy);
+  }
+  const collar = new THREE.Mesh(
+    new THREE.TorusGeometry(0.51, 0.075, 4, 8),
+    armor,
   );
-  core.scale.set(width, width, 1);
-  group.add(core);
-  const glow = new THREE.Mesh(
-    box,
+  collar.position.z = 0.87;
+  rotor.add(collar);
+  const muzzle = new THREE.Group();
+  muzzle.position.z = 2.78;
+  gun.add(muzzle);
+  const flash = new THREE.Mesh(new THREE.OctahedronGeometry(0.6, 0), hot);
+  flash.scale.set(0.68, 0.68, 1.8);
+  muzzle.add(flash);
+  for (let i = 0; i < 4; i++) {
+    const petal = block(muzzle, [0, 0, 0.1], [0.11, 1.32, 0.11], energy);
+    petal.rotation.z = (i / 4) * Math.PI;
+  }
+  const muzzleRing = new THREE.Mesh(
+    new THREE.RingGeometry(0.42, 0.53, 8),
     new THREE.MeshBasicMaterial({
-      color: tint,
+      color: side < 0 ? "#38dfff" : "#b4ff55",
+      side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.16,
+      opacity: 0,
       depthWrite: false,
+      blending: THREE.AdditiveBlending,
       toneMapped: false,
     }),
   );
-  glow.scale.set(width * 3, width * 3, 1);
-  group.add(glow);
-  return group;
+  muzzleRing.position.z = 2.8;
+  gun.add(muzzleRing);
+  const vapor = new THREE.InstancedMesh(
+    pixelGeometry,
+    new THREE.MeshBasicMaterial({
+      color: "#81ced8",
+      transparent: true,
+      opacity: 0.24,
+      depthWrite: false,
+    }),
+    6,
+  );
+  vapor.frustumCulled = false;
+  gun.add(vapor);
+  // A small stamped joke belongs to the machine, not the view over the track.
+  if (typeof document !== "undefined") {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 64;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#102131";
+    ctx.fillRect(0, 0, 256, 64);
+    ctx.fillStyle = "#ffb44e";
+    ctx.font = "bold 30px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(side < 0 ? "PEW DEPT." : "VERY SUBTLE", 128, 43);
+    const map = new THREE.CanvasTexture(canvas);
+    const label = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.78, 0.195),
+      new THREE.MeshBasicMaterial({ map, side: THREE.DoubleSide }),
+    );
+    label.position.set(0, 0.1, -0.724);
+    label.rotation.y = Math.PI;
+    gun.add(label);
+  }
+  // Fixed armor shares a handful of draws; only the mechanism remains articulated.
+  const batchBoxes = (parent, keep = new Set()) => {
+    const batches = new Map();
+    for (const child of [...parent.children]) {
+      if (
+        child.geometry !== pixelGeometry ||
+        child.isInstancedMesh ||
+        keep.has(child)
+      )
+        continue;
+      if (!batches.has(child.material)) batches.set(child.material, []);
+      child.updateMatrix();
+      batches.get(child.material).push(child.matrix.clone());
+      parent.remove(child);
+    }
+    for (const [material, transforms] of batches) {
+      const mesh = new THREE.InstancedMesh(
+        pixelGeometry,
+        material,
+        transforms.length,
+      );
+      transforms.forEach((matrix, i) => mesh.setMatrixAt(i, matrix));
+      mesh.computeBoundingSphere();
+      parent.add(mesh);
+    }
+  };
+  batchBoxes(gun, new Set([chamber, ...cooling]));
+  batchBoxes(rotor);
+  batchBoxes(muzzle);
+  return {
+    gun,
+    muzzle,
+    muzzleRing,
+    sleeve,
+    rotor,
+    chamber,
+    cooling,
+    vapor,
+    side,
+  };
 }
+
 function setBeam(mesh, a, b) {
   mesh.position.lerpVectors(a, b, 0.5);
   mesh.lookAt(b);
@@ -192,7 +388,7 @@ export class ArcadeCombat {
       this.root.add(debris);
       target.debris = debris;
       const ring = new THREE.Mesh(
-        new THREE.RingGeometry(1, 1.08, 16),
+        new THREE.RingGeometry(0.9, 1.16, 12),
         new THREE.MeshBasicMaterial({
           color: "#78ffe1",
           side: THREE.DoubleSide,
@@ -214,71 +410,47 @@ export class ArcadeCombat {
       }),
     );
     this.shots = Array.from({ length: 16 }, (_, i) => {
-      const b = beam(i % 2 ? "#8affdb" : "#39c9ff", 0.16);
+      const b = beam(i % 2 ? "#c0ff59" : "#35dfff", 0.52);
       this.root.add(b);
       return b;
     });
     this.enemyShots = Array.from({ length: 8 }, () => {
-      const b = beam("#ff256e", 0.33);
+      const b = beam("#ff286e", 0.43);
       this.root.add(b);
       return b;
     });
-    this.weapons = [-1, 1].map((side) => {
-      const gun = new THREE.Group();
-      gun.position.set(side * 1.68, -1.54, -3.05);
-      camera.add(gun);
-      const shell = new THREE.Mesh(
-        new THREE.BoxGeometry(0.56, 0.56, 1.35),
-        new THREE.MeshStandardMaterial({
-          color: "#576a82",
-          metalness: 0.65,
-          roughness: 0.48,
+    this.arenaBursts = Array.from({ length: 5 }, () => {
+      const group = new THREE.Group();
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(0.88, 1.08, 12),
+        new THREE.MeshBasicMaterial({
+          color: "#d9ff75",
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          toneMapped: false,
         }),
       );
-      shell.position.z = 0.35;
-      gun.add(shell);
-      const barrel = new THREE.Mesh(
-        new THREE.BoxGeometry(0.24, 0.24, 1.7),
-        new THREE.MeshStandardMaterial({
-          color: "#267c96",
-          metalness: 0.75,
-          roughness: 0.45,
+      const core = new THREE.Mesh(
+        new THREE.OctahedronGeometry(1, 0),
+        new THREE.MeshBasicMaterial({
+          color: "#efffcc",
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+          toneMapped: false,
         }),
       );
-      barrel.position.z = 1.2;
-      gun.add(barrel);
-      const stripe = new THREE.Mesh(
-        new THREE.BoxGeometry(0.58, 0.09, 0.72),
-        new THREE.MeshBasicMaterial({ color: "#02d2df" }),
-      );
-      stripe.position.set(0, 0.31, 0.38);
-      gun.add(stripe);
-      const panel = new THREE.Mesh(
-        new THREE.BoxGeometry(0.08, 0.32, 0.7),
-        new THREE.MeshStandardMaterial({
-          color: "#ff7534",
-          metalness: 0.4,
-          roughness: 0.3,
-        }),
-      );
-      panel.position.set(side * 0.31, 0, 0.35);
-      gun.add(panel);
-      for (let n = 0; n < 3; n++) {
-        const vent = new THREE.Mesh(
-          new THREE.BoxGeometry(0.6, 0.05, 0.1),
-          new THREE.MeshBasicMaterial({ color: "#50eaff" }),
-        );
-        vent.position.set(0, 0.3, 0.1 + n * 0.22);
-        gun.add(vent);
-      }
-      const muzzle = new THREE.Mesh(
-        new THREE.OctahedronGeometry(0.36, 0),
-        new THREE.MeshBasicMaterial({ color: "#b8ffdf", toneMapped: false }),
-      );
-      muzzle.position.z = 2.1;
-      gun.add(muzzle);
-      return { gun, muzzle, side };
+      group.add(ring, core);
+      this.root.add(group);
+      return { group, ring, core };
     });
+    this.weapons = [-1, 1].map((side) => makeCannon(camera, side));
+    this.shotKick = 0;
+    this.recoil = 0;
+    this.impact = 0;
     this.shield = new THREE.Mesh(
       new THREE.RingGeometry(2.3, 2.34, 6),
       new THREE.MeshBasicMaterial({
@@ -358,6 +530,7 @@ export class ArcadeCombat {
     this.weapons.forEach((v) => (v.gun.visible = active));
     this.shield.visible = active;
     this.muzzleLight.intensity = 0;
+    this.shotKick = this.recoil = this.impact = 0;
     if (!active) return;
     if (this.eventDuration !== duration) {
       this.events = combatEvents(this.motion, duration);
@@ -392,12 +565,29 @@ export class ArcadeCombat {
     });
     this.shots.forEach((b) => (b.visible = false));
     this.enemyShots.forEach((b) => (b.visible = false));
+    this.arenaBursts.forEach((v) => {
+      v.group.visible = false;
+    });
     if (this.score) this.score.visible = false;
     let n = 0,
       enemyN = 0,
       flash = 0,
       shield = 0,
       aim = null;
+    const gunPulses = [0, 0],
+      gunAges = [Infinity, Infinity],
+      gunCharges = [0, 0];
+    const firingPulse = (launch, side) => {
+      const dt = time - launch,
+        slot = side < 0 ? 0 : 1;
+      if (dt >= -0.12 && dt < 0)
+        gunCharges[slot] = Math.max(gunCharges[slot], 1 + dt / 0.12);
+      if (dt < 0 || dt > 0.42) return;
+      gunAges[slot] = Math.min(gunAges[slot], dt);
+      gunPulses[slot] = Math.max(gunPulses[slot], Math.exp(-dt * 14));
+      this.shotKick = Math.max(this.shotKick, Math.exp(-dt * 27));
+      this.recoil = Math.max(this.recoil, Math.exp(-dt * 11));
+    };
     for (const target of this.targets) {
       const event = events[target.id],
         age = time - event.killTime;
@@ -431,6 +621,8 @@ export class ArcadeCombat {
           launch = hit - shotFlight,
           dt = time - launch;
         const hitPose = this.pose(target.cue, hit, duration);
+        const shotSide = (target.id + Math.round(offset * 100)) % 2 ? 1 : -1;
+        firingPulse(launch, shotSide);
         if (dt >= 0 && dt < shotFlight && n < this.shots.length) {
           const r = this.motion.sample(launch / duration, duration).t;
           const from = flightPose(
@@ -440,16 +632,16 @@ export class ArcadeCombat {
             this.motion,
             this.frameAt,
           );
-          const side = (target.id + Math.round(offset * 100)) % 2 ? 1 : -1;
+          const side = shotSide;
           const origin = from.position
             .clone()
-            .addScaledVector(from.frame.tangent, 5)
-            .addScaledVector(from.frame.right, side * 1.55)
-            .addScaledVector(from.frame.normal, -1.2);
+            .addScaledVector(from.frame.tangent, 5.9)
+            .addScaledVector(from.frame.right, side * 2.2)
+            .addScaledVector(from.frame.normal, -1.53);
           const q = dt / shotFlight;
           const a = origin
               .clone()
-              .lerp(hitPose.position, Math.max(0, q - 0.28)),
+              .lerp(hitPose.position, Math.max(0, q - 0.42)),
             b = origin.clone().lerp(hitPose.position, q);
           const mesh = this.shots[n++];
           mesh.visible = true;
@@ -457,15 +649,15 @@ export class ArcadeCombat {
           flash = Math.max(flash, Math.exp(-dt * 45));
         }
         const impactAge = time - hit;
-        if (impactAge >= 0 && impactAge < 0.12) {
+        if (impactAge >= 0 && impactAge < 0.2) {
           target.ring.visible = true;
           target.ring.position.copy(hitPose.position);
           target.ring.lookAt(this.camera.position);
-          target.ring.scale.setScalar(1 + impactAge * 24);
-          target.ring.material.opacity = (1 - impactAge / 0.12) * 0.75;
+          target.ring.scale.setScalar(1.2 + impactAge * 35);
+          target.ring.material.opacity = (1 - impactAge / 0.2) * 0.68;
           target.group.position.addScaledVector(
             frame.normal,
-            Math.sin(impactAge * 40) * 0.6,
+            Math.sin(impactAge * 40) * 1.2,
           );
         }
       }
@@ -496,7 +688,7 @@ export class ArcadeCombat {
       }
       const shieldAge = dt - travel;
       if (shieldAge >= 0 && shieldAge < 0.2)
-        shield = Math.max(shield, (1 - shieldAge / 0.2) * 0.22);
+        shield = Math.max(shield, (1 - shieldAge / 0.2) * 0.35);
       target.debris.visible = age >= 0 && age < 2.4;
       if (target.debris.visible) {
         target.group.updateMatrixWorld(true);
@@ -511,8 +703,8 @@ export class ArcadeCombat {
         target.cells.forEach((cell, i) => {
           const radial = cell.position.clone().normalize();
           const velocity = radial
-            .multiplyScalar(6 + random(i + target.id * 400) * 14)
-            .add(new THREE.Vector3(0, 5, 0));
+            .multiplyScalar(10 + random(i + target.id * 400) * 24)
+            .add(new THREE.Vector3(0, 8, 0));
           dummy.position
             .copy(cell.position)
             .applyMatrix4(basis.matrixWorld)
@@ -530,12 +722,13 @@ export class ArcadeCombat {
           target.debris.setMatrixAt(i, dummy.matrix);
         });
         target.debris.instanceMatrix.needsUpdate = true;
-        if (age < 0.36) {
+        if (age < 0.52) {
+          this.impact = Math.max(this.impact, Math.exp(-age * 8));
           target.ring.visible = true;
           target.ring.position.copy(death.position);
           target.ring.lookAt(this.camera.position);
-          target.ring.scale.setScalar(2 + age * 22);
-          target.ring.material.opacity = (1 - age / 0.36) * 0.7;
+          target.ring.scale.setScalar(2.5 + age * 38);
+          target.ring.material.opacity = (1 - age / 0.52) * 0.8;
         }
         if (this.score && age < 0.65) {
           this.score.visible = true;
@@ -546,9 +739,34 @@ export class ArcadeCombat {
         }
       }
     }
+    let burstIndex = 0;
     for (const event of arena?.fireEvents || []) {
       const launch = event.hitTime - shotFlight,
         dt = time - launch;
+      firingPulse(launch, event.target % 2 ? 1 : -1);
+      const hitAge = time - event.hitTime;
+      if (
+        hitAge >= 0 &&
+        hitAge < 0.36 &&
+        burstIndex < this.arenaBursts.length
+      ) {
+        const { group, ring, core } = this.arenaBursts[burstIndex++];
+        group.visible = true;
+        group.position.copy(event.point);
+        group.lookAt(this.camera.position);
+        const power = event.final ? 1.5 : 1;
+        ring.scale.setScalar((1.4 + hitAge * 27) * power);
+        ring.material.opacity = (1 - hitAge / 0.36) * 0.62;
+        ring.material.color.set(
+          event.kind === "barrel" ? "#7fffee" : "#ffb44b",
+        );
+        core.scale.setScalar(
+          Math.max(0.001, (1 - hitAge / 0.12) * 2.4 * power),
+        );
+        core.material.opacity = Math.max(0, 1 - hitAge / 0.12) * 0.8;
+      }
+      if (event.final && hitAge >= 0 && hitAge < 0.45)
+        this.impact = Math.max(this.impact, Math.exp(-hitAge * 9));
       if (dt < -0.25 || dt > shotFlight) continue;
       if (dt < 0) {
         aim = { point: event.point, killTime: event.hitTime };
@@ -564,16 +782,16 @@ export class ArcadeCombat {
       );
       const origin = from.position
         .clone()
-        .addScaledVector(from.frame.tangent, 5)
-        .addScaledVector(from.frame.right, event.target % 2 ? 1.68 : -1.68)
-        .addScaledVector(from.frame.normal, -1.54);
+        .addScaledVector(from.frame.tangent, 5.9)
+        .addScaledVector(from.frame.right, event.target % 2 ? 2.2 : -2.2)
+        .addScaledVector(from.frame.normal, -1.53);
       const q = dt / shotFlight;
       if (n < this.shots.length) {
         const shot = this.shots[n++];
         shot.visible = true;
         setBeam(
           shot,
-          origin.clone().lerp(event.point, Math.max(0, q - 0.24)),
+          origin.clone().lerp(event.point, Math.max(0, q - 0.42)),
           origin.clone().lerp(event.point, q),
         );
       }
@@ -598,18 +816,68 @@ export class ArcadeCombat {
       };
     }
     this.camera.updateMatrixWorld(true);
-    this.weapons.forEach(({ gun, muzzle, side }) => {
-      gun.position.z = -3.05 + flash * 0.13;
-      gun.position.y = -1.54 - (calm ? 0 : landing * 0.18);
-      if (aim) gun.lookAt(aim.point);
-      else gun.quaternion.identity();
-      // Mesh +Z is its barrel direction; parked guns point forward in camera space.
-      if (!aim) gun.rotation.y = Math.PI;
-      muzzle.visible = flash > 0.05;
-      muzzle.scale.setScalar(0.4 + flash * 0.5);
-      muzzle.rotation.z = time * 30 * side;
-    });
-    this.muzzleLight.intensity = flash * 9;
+    this.weapons.forEach(
+      (
+        {
+          gun,
+          muzzle,
+          muzzleRing,
+          sleeve,
+          rotor,
+          chamber,
+          cooling,
+          vapor,
+          side,
+        },
+        index,
+      ) => {
+        const pulse = gunPulses[index],
+          age = gunAges[index],
+          charge = gunCharges[index];
+        gun.position.z = -3.15 + pulse * 0.26;
+        gun.position.y = -1.53 - (calm ? 0 : landing * 0.18) - pulse * 0.07;
+        if (aim) gun.lookAt(aim.point);
+        else {
+          gun.quaternion.identity();
+          gun.rotation.y = Math.PI;
+        }
+        // All motion is a pure function of timeline: scrubbing never leaves a hot barrel behind.
+        sleeve.position.z = 1.38 - pulse * 0.32;
+        rotor.rotation.z = side * (time * 1.5 + pulse * 0.68);
+        chamber.scale.set(0.48 + charge * 0.1, 0.48 + charge * 0.1, 0.9);
+        chamber.material.color
+          .set(side < 0 ? "#27e4ff" : "#a3ff56")
+          .multiplyScalar(0.72 + charge * 0.65 + pulse * 0.75);
+        cooling.forEach((fin, i) => {
+          fin.position.y = 0.46 + pulse * (0.09 + i * 0.015);
+        });
+        muzzle.visible = age < 0.105;
+        muzzle.scale.setScalar(0.65 + pulse * 0.6);
+        muzzle.rotation.z = side * time * 36;
+        muzzleRing.visible = age < 0.22;
+        muzzleRing.scale.setScalar(1 + Math.min(age, 0.22) * 5);
+        muzzleRing.position.z = 2.8 + Math.min(age, 0.22) * 3;
+        muzzleRing.material.opacity = age < 0.22 ? (1 - age / 0.22) * 0.7 : 0;
+        vapor.visible = age > 0.08 && age < 0.4;
+        if (vapor.visible) {
+          for (let i = 0; i < 6; i++) {
+            const life = Math.max(0, age - i * 0.016);
+            dummy.position.set(
+              side * (0.55 + life * 1.2),
+              0.27 + life * 1.4,
+              0.25 + i * 0.16,
+            );
+            dummy.rotation.set(time + i, i, time * 2);
+            dummy.scale.setScalar(Math.max(0.001, 0.035 + life * 0.14));
+            dummy.updateMatrix();
+            vapor.setMatrixAt(i, dummy.matrix);
+          }
+          vapor.instanceMatrix.needsUpdate = true;
+        }
+      },
+    );
+    this.muzzleLight.intensity = Math.max(...gunPulses) * 38;
+    this.impact = Math.max(this.impact, shield * 1.7);
     this.shield.material.opacity = shield * (calm ? 0.25 : 1);
   }
 }

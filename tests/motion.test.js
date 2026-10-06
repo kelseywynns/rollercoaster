@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import * as THREE from "three";
 import { trackPoints } from "../src/world.js";
 import { createMotionProfile } from "../src/motion.js";
+import { DEFAULT_DURATION } from "../src/ride.js";
 
 const curve = new THREE.CatmullRomCurve3(
   trackPoints.map((p) => new THREE.Vector3(...p)),
@@ -16,8 +17,8 @@ const motion = createMotionProfile(curve);
 
 test("the ride begins slowly and reserves the first major drop for the build-up", () => {
   assert.ok(motion.sample(0).speed < 4);
-  const firstCrestTime = motion.progressAt(0.166) * 110;
-  assert.ok(firstCrestTime > 18 && firstCrestTime < 24);
+  const firstCrestTime = motion.progressAt(0.166) * DEFAULT_DURATION;
+  assert.ok(firstCrestTime > 11 && firstCrestTime < 15);
   assert.ok(motion.sample(motion.progressAt(0.155)).height > 140);
 });
 

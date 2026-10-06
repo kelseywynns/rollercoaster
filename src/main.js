@@ -3,6 +3,10 @@ import { VoxelWorld } from "./world.js";
 import { Soundtrack } from "./audio.js";
 import { installRenderUI } from "./render-ui.js";
 import {
+  DEFAULT_MASTER_VOLUME,
+  DEFAULT_EFFECTS_VOLUME,
+} from "./effects-audio.js";
+import {
   CHAPTERS,
   DEFAULT_DURATION,
   RideClock,
@@ -76,7 +80,7 @@ document.querySelector("#app").innerHTML = `
     <div id="webgl-error" hidden><h2>A world worth waiting for.</h2><p>This experience needs WebGL. Enable hardware acceleration in your browser and reload to step inside.</p><button class="primary-button" onclick="location.reload()">Try again</button></div>
   </main>
 
-  <dialog id="sound-dialog" aria-labelledby="sound-title"><button class="dialog-close icon-button" data-close aria-label="Close soundtrack settings">${icon("close")}</button><div class="eyebrow">THE OTHER HALF OF THE EXPERIENCE</div><h2 id="sound-title">A world for<br>your sound.</h2><p>Every journey deserves a soundtrack. Try the ambient demo, or bring a song of your own.</p><button id="demo-button" class="track-option selected">${equalizer}<span><strong>Daydream circuit</strong><small>Generative ambient · Built-in demo</small></span><span class="track-check">✓</span></button><label class="upload-area" for="audio-file">${icon("upload")}<strong>Bring your own track</strong><span>Choose an MP3, WAV, OGG, or M4A</span><small>Your audio stays on this device.</small><input id="audio-file" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" /></label><div id="loaded-track" hidden><span>YOUR TRACK</span><strong id="loaded-track-name"></strong><small id="loaded-track-duration"></small></div><label class="volume-label" for="volume">Volume <span id="volume-value">50%</span></label><input id="volume" type="range" min="0" max="100" value="50" /><label class="volume-label" for="effects-volume">Soft sound effects <span id="effects-volume-value">35%</span></label><input id="effects-volume" type="range" min="0" max="100" value="35" /><div class="sound-note">${icon("spark")} The ride follows your track’s duration. Its energy adds a subtle glow to the world.</div><button class="primary-button dialog-done" data-close>Sounds good ${icon("arrow")}</button></dialog>
+  <dialog id="sound-dialog" aria-labelledby="sound-title"><button class="dialog-close icon-button" data-close aria-label="Close soundtrack settings">${icon("close")}</button><div class="eyebrow">THE OTHER HALF OF THE EXPERIENCE</div><h2 id="sound-title">A world for<br>your sound.</h2><p>Every journey deserves a soundtrack. Try the ambient demo, or bring a song of your own.</p><button id="demo-button" class="track-option selected">${equalizer}<span><strong>Daydream circuit</strong><small>Generative ambient · Built-in demo</small></span><span class="track-check">✓</span></button><label class="upload-area" for="audio-file">${icon("upload")}<strong>Bring your own track</strong><span>Choose an MP3, WAV, OGG, or M4A</span><small>Your audio stays on this device.</small><input id="audio-file" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" /></label><div id="loaded-track" hidden><span>YOUR TRACK</span><strong id="loaded-track-name"></strong><small id="loaded-track-duration"></small></div><label class="volume-label" for="volume">Volume <span id="volume-value">${DEFAULT_MASTER_VOLUME * 100}%</span></label><input id="volume" type="range" min="0" max="100" value="${DEFAULT_MASTER_VOLUME * 100}" /><label class="volume-label" for="effects-volume">Arcade sound effects <span id="effects-volume-value">${DEFAULT_EFFECTS_VOLUME * 100}%</span></label><input id="effects-volume" type="range" min="0" max="100" value="${DEFAULT_EFFECTS_VOLUME * 100}" /><div class="sound-note">${icon("spark")} The ride follows your track’s duration. Its energy adds a subtle glow to the world.</div><button class="primary-button dialog-done" data-close>Sounds good ${icon("arrow")}</button></dialog>
 
   <dialog id="settings-dialog" aria-labelledby="settings-title"><button class="dialog-close icon-button" data-close aria-label="Close experience settings">${icon("close")}</button><div class="eyebrow">MAKE YOURSELF AT HOME</div><h2 id="settings-title">Your kind<br>of escape.</h2><div class="setting-row"><div><strong>Gentle motion</strong><p>Level camera, wider turns, softer pace of change.</p></div><label class="switch"><input id="gentle-motion" type="checkbox" /><span></span><span class="sr-only">Gentle motion</span></label></div><div class="setting-row"><div><strong>Visual quality</strong><p>Find the right balance for your device.</p></div><select id="quality" aria-label="Visual quality"><option value="cinematic">Cinematic</option><option value="performance">Performance</option></select></div><div class="keyboard-guide"><span><kbd>SPACE</kbd> Pause</span><span><kbd>M</kbd> Sound</span><span><kbd>F</kbd> Fullscreen</span><span><kbd>ESC</kbd> Exit ride</span></div><button class="primary-button dialog-done" data-close>All set ${icon("arrow")}</button></dialog>
 `;
@@ -418,10 +422,8 @@ requestAnimationFrame(() =>
     try {
       world = new VoxelWorld($("#world"), { reducedMotion });
       soundtrack.configureEffects(world.motion);
-      if (window.innerWidth < 700) {
-        world.setQuality("performance");
-        $("#quality").value = "performance";
-      }
+      // A narrow desktop panel still deserves the full radiant arcade look.
+      world.setQuality("cinematic");
       $("#start-button").disabled = false;
       $("#start-button").innerHTML = `Enter the ride ${icon("arrow")}`;
       document

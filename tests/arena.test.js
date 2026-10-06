@@ -135,7 +135,7 @@ test("the progressive breakup replays after seeking without invalid GPU transfor
 });
 
 test("cannon hits follow moving barrels and the third hit breaks their actual voxels", () => {
-  for (const duration of [110, 240]) {
+  for (const duration of [78, 110, 240]) {
     arena.buildBattle(duration);
     assert.equal(
       arena.fireEvents.filter((e) => e.kind === "boss").length,
