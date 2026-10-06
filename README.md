@@ -4,7 +4,7 @@ A first-person, automatic rollercoaster through a luminous voxel universe. A mus
 
 **[Enter the ride](https://kelseywynns.github.io/rollercoaster/)**
 
-The visual direction combines cinematic arcade nostalgia with original procedural scenery: floating gardens, pink voxel trees, falling water, pixel creatures, a striped sunset, and illuminated rails. All artwork is generated in code; there are no downloaded game or movie assets.
+The visual direction combines cinematic arcade nostalgia with original procedural scenery: floating gardens, pink voxel trees, falling water, pixel creatures, a pixel crescent moon, stars, subtle aurora, and illuminated rails. A deep midnight sky and saturated magenta, cobalt, emerald and amber scenery keep the luminous characters readable. All artwork is generated in code; there are no downloaded game or movie assets.
 
 ## Run locally
 

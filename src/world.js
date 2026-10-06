@@ -105,7 +105,7 @@ export class VoxelWorld {
     this.energy = 0;
     this.look = new THREE.Vector2();
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2("#b386b5", 0.0009);
+    this.scene.fog = new THREE.FogExp2("#080d29", 0.0008);
     this.camera = new THREE.PerspectiveCamera(60, 1, 0.5, 2600);
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -114,8 +114,8 @@ export class VoxelWorld {
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
-    this.renderer.setClearColor("#9f7cba");
+    this.renderer.toneMappingExposure = 0.95;
+    this.renderer.setClearColor("#030717");
     container.appendChild(this.renderer.domElement);
     this.renderer.domElement.setAttribute(
       "aria-label",
@@ -156,7 +156,7 @@ export class VoxelWorld {
     this.makeCar();
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.4, 0.65, 0.8);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.4, 0.5, 0.6);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
     this.resize();
@@ -165,14 +165,14 @@ export class VoxelWorld {
   }
 
   makeLighting() {
-    this.scene.add(new THREE.HemisphereLight("#b7dfff", "#361856", 1.8));
-    const sunlight = new THREE.DirectionalLight("#ffd0ab", 2.6);
-    sunlight.position.set(300, 430, -400);
-    this.scene.add(sunlight);
-    const rim = new THREE.DirectionalLight("#b493ff", 0.9);
+    this.scene.add(new THREE.HemisphereLight("#819dff", "#250643", 0.85));
+    const moonlight = new THREE.DirectionalLight("#adc9ff", 1.8);
+    moonlight.position.set(300, 430, -400);
+    this.scene.add(moonlight);
+    const rim = new THREE.DirectionalLight("#ff137f", 1.35);
     rim.position.set(-200, 120, 100);
     this.scene.add(rim);
-    const fill = new THREE.DirectionalLight("#fff0e2", 1.9);
+    const fill = new THREE.DirectionalLight("#44aaff", 0.95);
     fill.position.set(20, 190, 280);
     this.scene.add(fill);
   }
@@ -181,7 +181,7 @@ export class VoxelWorld {
     this.scene.add(this.camera);
     this.car = new THREE.Group();
     this.camera.add(this.car);
-    this.headlight = new THREE.PointLight("#74dfff", 180, 45, 2);
+    this.headlight = new THREE.PointLight("#28bfff", 55, 45, 2);
     this.headlight.position.set(0, 3, -10);
     this.camera.add(this.headlight);
     const navy = new THREE.MeshStandardMaterial({
@@ -190,11 +190,11 @@ export class VoxelWorld {
       metalness: 0.4,
     });
     const mint = new THREE.MeshStandardMaterial({
-      color: "#68cbb5",
+      color: "#00cdb9",
       roughness: 0.35,
       metalness: 0.3,
     });
-    const coral = new THREE.MeshBasicMaterial({ color: "#ffb27e" });
+    const coral = new THREE.MeshBasicMaterial({ color: "#ff378d" });
     const add = (x, y, z, w, h, d, mat) => {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
       mesh.position.set(x, y, z);
@@ -218,47 +218,67 @@ export class VoxelWorld {
       side: THREE.BackSide,
       depthWrite: false,
       uniforms: {
-        topColor: { value: new THREE.Color("#302351") },
-        horizonColor: { value: new THREE.Color("#ed8896") },
-        bottomColor: { value: new THREE.Color("#9361b2") },
+        topColor: { value: new THREE.Color("#020413") },
+        horizonColor: { value: new THREE.Color("#101443") },
+        bottomColor: { value: new THREE.Color("#020714") },
       },
       vertexShader:
         "varying vec3 vPosition; void main(){vPosition=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}",
-      fragmentShader:
-        "varying vec3 vPosition; uniform vec3 topColor; uniform vec3 horizonColor; uniform vec3 bottomColor; void main(){float h=normalize(vPosition).y; vec3 c=mix(horizonColor,topColor,smoothstep(0.0,0.7,h)); c=mix(c,bottomColor,(1.0-smoothstep(-0.4,0.0,h))); gl_FragColor=vec4(c,1.0);}",
+      fragmentShader: `
+        varying vec3 vPosition;
+        uniform vec3 topColor, horizonColor, bottomColor;
+        void main() {
+          vec3 direction = normalize(vPosition);
+          float h = direction.y;
+          vec3 c = mix(horizonColor, topColor, smoothstep(0.0, 0.7, h));
+          c = mix(c, bottomColor, 1.0 - smoothstep(-0.4, 0.0, h));
+          // A faint aurora gives the dark sky depth without lifting its black level.
+          float longitude = atan(direction.x, direction.z);
+          float ribbon = 0.22 + sin(longitude * 3.0) * 0.07 + sin(longitude * 7.0) * 0.018;
+          float veil = exp(-pow((h - ribbon) / 0.07, 2.0));
+          c += mix(vec3(0.008, 0.005, 0.045), vec3(0.0, 0.032, 0.027), sin(longitude * 2.0) * 0.5 + 0.5) * veil;
+          gl_FragColor = vec4(c, 1.0);
+        }`,
     });
     this.sky = new THREE.Mesh(geometry, material);
     this.scene.add(this.sky);
-    this.sun = new THREE.Group();
-    const sunBatch = new VoxelBatch(this.sun, true);
-    const unit = 12;
+    this.moon = new THREE.Group();
+    const moonBatch = new VoxelBatch(this.moon, true);
+    const unit = 9;
     for (let y = -10; y <= 10; y++)
       for (let x = -10; x <= 10; x++) {
-        if (x * x + y * y > 99 || (y < -3 && y % 3 === 0)) continue;
-        const color = new THREE.Color().lerpColors(
-          new THREE.Color("#ff3154"),
-          new THREE.Color("#ffb14b"),
-          (y + 10) / 20,
-        );
-        sunBatch.add(x * unit, y * unit, 0, unit + 0.2, unit + 0.2, 8, color);
+        if (x * x + y * y > 99) continue;
+        // The shifted shadow forms a chunky crescent, with subtle blue crater pixels.
+        const shadow = (x - 4) ** 2 + (y + 1) ** 2 < 87;
+        const crater =
+          (x + 4) ** 2 + (y - 3) ** 2 < 7 || (x + 5) ** 2 + (y + 4) ** 2 < 4;
+        const color = shadow ? "#10244d" : crater ? "#168cca" : "#38c8ff";
+        moonBatch.add(x * unit, y * unit, 0, unit + 0.2, unit + 0.2, 8, color);
       }
-    sunBatch.build().material.fog = false;
-    this.scene.add(this.sun);
+    moonBatch.build().material.fog = false;
+    this.scene.add(this.moon);
     const stars = new VoxelBatch(this.scene, true);
-    for (let i = 0; i < 140; i++) {
-      const x = (rand(i, 83) - 0.5) * 3200,
-        y = 180 + rand(i, 72) * 950,
-        z = -600 - rand(i, 55) * 1600;
-      stars.add(x, y, z, 1.7, 1.7, 1.7, "#bcaedb");
+    for (let i = 0; i < 460; i++) {
+      const x = (rand(i, 83) - 0.5) * 3600,
+        y = 180 + rand(i, 72) * 1350,
+        z = -600 - rand(i, 55) * 1500;
+      const size = i % 19 === 0 ? 2.8 : 1.25;
+      const color = ["#399dff", "#8266ff", "#34edd2", "#b3ccff"][i % 4];
+      stars.add(x, y, z, size, size, size, color);
+      if (i % 37 === 0) {
+        stars.add(x, y, z, 7, 1, 1, color);
+        stars.add(x, y, z, 1, 7, 1, color);
+      }
     }
     this.stars = stars.build();
+    this.stars.material.fog = false;
   }
 
   makeWorld() {
     const water = new THREE.Mesh(
       new THREE.PlaneGeometry(8000, 11000),
       new THREE.MeshStandardMaterial({
-        color: "#55427f",
+        color: "#050d26",
         roughness: 0.28,
         metalness: 0.52,
       }),
@@ -277,7 +297,7 @@ export class VoxelWorld {
         3 + rand(i, 27) * 18,
         0.1,
         1.2,
-        rand(i, 28) > 0.5 ? "#8a739f" : "#ab7c9f",
+        rand(i, 28) > 0.5 ? "#153f7c" : "#652373",
       );
     }
     const islands = [
@@ -325,7 +345,7 @@ export class VoxelWorld {
           width * (1 - j * 0.13),
           h / 5,
           width * (1 - j * 0.13),
-          ["#655283", "#756090", "#846a9c"][i % 3],
+          ["#111f49", "#1a245d", "#232068"][i % 3],
         );
     }
     // Floating stepping-stone islands.
@@ -335,32 +355,32 @@ export class VoxelWorld {
         y = 35 + rand(i, 96) * 250,
         s = 6 + rand(i, 97) * 16;
       if (Math.abs(x) < 300) continue;
-      this.solids.add(x, y, z, s, s * 0.65, s, "#675784");
-      this.solids.add(x, y + s * 0.39, z, s, 2, s, "#87a6ab");
+      this.solids.add(x, y, z, s, s * 0.65, s, "#222454");
+      this.solids.add(x, y + s * 0.39, z, s, 2, s, "#168b9a");
     }
   }
 
   island(cx, cy, cz, radius, biome, seed) {
     const palettes = [
       {
-        top: ["#258d77", "#37b98c", "#67d9a2", "#8be8af"],
-        rock: ["#40315f", "#554071", "#6c4d7a"],
-        leaves: ["#ff439e", "#ff91bd", "#db398e", "#ef69b6"],
+        top: ["#007253", "#00aa64", "#00df7f", "#26f997"],
+        rock: ["#15113a", "#251446", "#382051"],
+        leaves: ["#ff007d", "#ff299f", "#b90083", "#e700e2"],
       },
       {
-        top: ["#5868a3", "#687cb1", "#5a90a9", "#919bc6"],
-        rock: ["#453563", "#584375", "#685184"],
-        leaves: ["#86bcfc", "#b7abff", "#b7d3ff", "#898def"],
+        top: ["#203c9a", "#2e42cf", "#006caf", "#5145df"],
+        rock: ["#17153e", "#261b51", "#332060"],
+        leaves: ["#0077ff", "#7025ff", "#19c2ff", "#3333ff"],
       },
       {
-        top: ["#b36e87", "#c88a95", "#d69b9a", "#9b657e"],
-        rock: ["#613355", "#7e4266", "#994e72"],
-        leaves: ["#ffb169", "#ffd396", "#f59387", "#ffc587"],
+        top: ["#91365b", "#bc2c59", "#e74457", "#73254d"],
+        rock: ["#321137", "#481346", "#66184c"],
+        leaves: ["#ff6a00", "#ffb000", "#ff284a", "#ff8800"],
       },
       {
-        top: ["#457a91", "#518e9e", "#69a4af", "#65bcae"],
-        rock: ["#35385a", "#443e69", "#5c487a"],
-        leaves: ["#69efd2", "#a2ffd8", "#65cdbd", "#9ae9eb"],
+        top: ["#006580", "#007d8e", "#009d9e", "#00cbb0"],
+        rock: ["#0d1c3d", "#16254a", "#2c2358"],
+        leaves: ["#00f4b0", "#21ff84", "#00bd98", "#00dfff"],
       },
     ];
     const palette = palettes[biome],
@@ -403,7 +423,7 @@ export class VoxelWorld {
             1.6,
             2.6,
             1.6,
-            ["#ffd99b", "#ffc3de", "#aafbea"][biome % 3],
+            ["#ffae00", "#ff229e", "#00ffe0"][biome % 3],
           );
           this.solids.add(cx + x, top + 3.5, cz + z, 0.7, 1.5, 0.7, "#7bc7a0");
         }
@@ -430,10 +450,10 @@ export class VoxelWorld {
         2.2,
         h,
         2.2,
-        biome % 2 ? "#a0e4e7" : "#f9c9ab",
+        biome % 2 ? "#00cfff" : "#ff3388",
         0.3,
       );
-      this.solids.add(p.x + 3, p.y + h / 4, p.z + 3, 3, h / 2, 3, "#b4c5f1");
+      this.solids.add(p.x + 3, p.y + h / 4, p.z + 3, 3, h / 2, 3, "#4865ff");
     }
     if (seed % 3 === 0) {
       const fallx = cx + radius * 0.48,
@@ -446,7 +466,7 @@ export class VoxelWorld {
           2.7,
           13,
           2,
-          f % 2 ? "#70bfda" : "#acdbea",
+          f % 2 ? "#007eff" : "#00d6ff",
         );
       }
       for (let s = 0; s < 9; s++)
@@ -457,7 +477,7 @@ export class VoxelWorld {
           2,
           2,
           2,
-          "#81b9df",
+          "#217bff",
         );
     }
   }
@@ -472,7 +492,7 @@ export class VoxelWorld {
       3.3 * scale,
       height,
       3.3 * scale,
-      "#704f79",
+      "#3e205d",
     );
     this.solids.add(
       x + 3 * scale,
@@ -481,7 +501,7 @@ export class VoxelWorld {
       9 * scale,
       2 * scale,
       2 * scale,
-      "#825c85",
+      "#6b2579",
     );
     for (let ix = -2; ix <= 2; ix++)
       for (let iy = -1; iy <= 2; iy++)
@@ -564,7 +584,7 @@ export class VoxelWorld {
           12,
           1.8,
           2,
-          "#a08da9",
+          "#343f6a",
           yaw,
         );
       }
@@ -596,7 +616,7 @@ export class VoxelWorld {
         new THREE.Mesh(
           new THREE.TubeGeometry(line, 2400, 0.47, 5, false),
           new THREE.MeshBasicMaterial({
-            color: i ? "#ffe5ad" : "#9cfff0",
+            color: i ? "#ff238c" : "#00dbff",
             toneMapped: false,
           }),
         ),
@@ -604,7 +624,7 @@ export class VoxelWorld {
       const base = new THREE.Mesh(
         new THREE.TubeGeometry(line, 1800, 0.95, 4, false),
         new THREE.MeshStandardMaterial({
-          color: "#8a779b",
+          color: "#28355c",
           metalness: 0.6,
           roughness: 0.3,
         }),
@@ -618,7 +638,7 @@ export class VoxelWorld {
       if (t > 0.994) continue;
       const { point, right, tangent } = this.frameAt(t);
       const gate = new THREE.Group(),
-        color = i % 3 === 0 ? "#ffc686" : i % 3 === 1 ? "#bfa7ff" : "#8df0de";
+        color = i % 3 === 0 ? "#ff7800" : i % 3 === 1 ? "#7e27ff" : "#00f2ca";
       const blocks = new VoxelBatch(gate, true);
       for (let side of [-1, 1]) {
         blocks.add(side * 11, 7, 0, 1, 14, 1, color);
@@ -646,12 +666,12 @@ export class VoxelWorld {
       "....XX.XX....",
     ];
     const places = [
-      [134, 102, -115, 3.6, "#ffbe79"],
-      [-170, 164, -490, 4, "#b8a5ff"],
-      [100, 234, -1200, 4, "#f797cc"],
-      [310, 166, -2050, 5, "#ffd393"],
-      [-250, 233, -2690, 4.5, "#87ffd4"],
-      [135, 263, -3630, 5.5, "#ffc299"],
+      [134, 102, -115, 3.6, "#ff9400"],
+      [-170, 164, -490, 4, "#8e2bff"],
+      [100, 234, -1200, 4, "#ff1398"],
+      [310, 166, -2050, 5, "#ffad00"],
+      [-250, 233, -2690, 4.5, "#00ffae"],
+      [135, 263, -3630, 5.5, "#ff6700"],
     ];
     places.forEach(([x, y, z, scale, color], i) => {
       const group = new THREE.Group(),
@@ -693,9 +713,9 @@ export class VoxelWorld {
       const x = -20 + rand(i, 67) * 380,
         y = 80 + rand(i, 68) * 45,
         z = -80 - rand(i, 69) * 600;
-      this.glows.add(x, y, z, 2, 2, 2, "#ffdaba");
-      this.glows.add(x - 3, y + 2, z, 4, 1, 1, "#ffdaba");
-      this.glows.add(x + 3, y + 2, z, 4, 1, 1, "#ffdaba");
+      this.glows.add(x, y, z, 2, 2, 2, "#ffc62b");
+      this.glows.add(x - 3, y + 2, z, 4, 1, 1, "#ffc62b");
+      this.glows.add(x + 3, y + 2, z, 4, 1, 1, "#ffc62b");
     }
   }
 
@@ -708,7 +728,7 @@ export class VoxelWorld {
         rand(i, 302) * 330 - 10,
         -rand(i, 303) * 4700,
       );
-      const c = new THREE.Color(["#ffc39e", "#d0b5ff", "#97eadb"][i % 3]);
+      const c = new THREE.Color(["#ff4266", "#9a35ff", "#00eec5"][i % 3]);
       colors.push(c.r, c.g, c.b);
     }
     const geometry = new THREE.BufferGeometry();
@@ -797,9 +817,9 @@ export class VoxelWorld {
     }
     this.camera.updateProjectionMatrix();
     this.sky.position.copy(this.camera.position);
-    this.sun.position.set(
+    this.moon.position.set(
       this.camera.position.x + 360,
-      260 + this.camera.position.y * 0.12,
+      410 + this.camera.position.y * 0.12,
       this.camera.position.z - 1150,
     );
     this.stars.position.z = this.camera.position.z * 0.95;
@@ -820,11 +840,11 @@ export class VoxelWorld {
       });
     const inside = mode === "idle" ? 0 : tunnelCoverage(motion.t);
     this.scene.fog.color
-      .set("#b386b5")
-      .lerp(new THREE.Color("#172246"), inside);
-    this.scene.fog.density = 0.0009 + inside * 0.002;
+      .set("#080d29")
+      .lerp(new THREE.Color("#040b20"), inside);
+    this.scene.fog.density = 0.0008 + inside * 0.002;
     this.headlight.visible = mode !== "idle";
-    this.bloom.strength = 0.52 + this.energy * 0.15;
+    this.bloom.strength = 0.42 + this.energy * 0.12;
     this.composer.render();
   }
 }

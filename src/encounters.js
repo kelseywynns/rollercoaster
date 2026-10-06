@@ -106,7 +106,7 @@ export class Encounters {
     scene.add(this.root);
     this.sentinel = sprite(
       sentinelPattern,
-      { X: "#ff2459", E: "#aaffef", K: "#451b50" },
+      { X: "#ff0643", E: "#40ffe0", K: "#451b50" },
       1.45,
     );
     this.root.add(this.sentinel);
@@ -119,13 +119,13 @@ export class Encounters {
         "..XXXXX..",
         "...X.X...",
       ],
-      { X: "#ffd179", E: "#42264e" },
+      { X: "#ffae00", E: "#42264e" },
       0.65,
     );
     this.root.add(this.companion);
     this.dragon = sprite(
       wingPattern,
-      { X: "#4bf3bb", E: "#fff6a0", K: "#235275" },
+      { X: "#00ff8c", E: "#b5ff37", K: "#235275" },
       1.2,
     );
     this.root.add(this.dragon);
@@ -133,11 +133,11 @@ export class Encounters {
       const segment = new THREE.Group();
       const body = new THREE.Mesh(
         new THREE.BoxGeometry(3.6 - i * 0.16, 3.3 - i * 0.13, 4.5),
-        pixelMaterial(i % 2 ? "#53dabd" : "#82f7c9", 0.65),
+        pixelMaterial(i % 2 ? "#00cda1" : "#00f79c", 0.65),
       );
       const fin = new THREE.Mesh(
         new THREE.BoxGeometry(0.7, 3.7 - i * 0.14, 1.8),
-        new THREE.MeshBasicMaterial({ color: "#ffb3cd" }),
+        new THREE.MeshBasicMaterial({ color: "#ff00a8" }),
       );
       fin.position.y = 2.8 - i * 0.1;
       segment.add(body, fin);
@@ -147,7 +147,7 @@ export class Encounters {
     this.wings = [-1, 1].map((side) => {
       const drone = sprite(
         wingPattern,
-        { X: side < 0 ? "#ad88ff" : "#ffbe76", E: "#fff9d4", K: "#54214d" },
+        { X: side < 0 ? "#7625ff" : "#ff7700", E: "#fff039", K: "#54214d" },
         0.6,
       );
       this.root.add(drone);
@@ -159,7 +159,7 @@ export class Encounters {
         const cube = new THREE.Mesh(
           box,
           new THREE.MeshBasicMaterial({
-            color: j === 0 ? "#fff4cd" : i % 2 ? "#fc67bd" : "#66ffe0",
+            color: j === 0 ? "#fff4cd" : i % 2 ? "#ff009d" : "#00ffc8",
             transparent: true,
             opacity: 1 - j * 0.13,
             toneMapped: false,
@@ -189,7 +189,7 @@ export class Encounters {
     });
     this.burst = new THREE.InstancedMesh(
       pixelGeometry,
-      pixelMaterial("#ffffff", 0.25),
+      pixelMaterial("#ffffff", 1.15, true),
       this.fragments.length,
     );
     this.burst.frustumCulled = false;

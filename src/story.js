@@ -7,9 +7,9 @@ export const CRASH = {
   height: 9,
 };
 export const TUNNELS = [
-  { start: 0.234, end: 0.272, color: "#65fff0", accent: "#ff83c7" },
-  { start: 0.47, end: 0.51, color: "#d397ff", accent: "#ffc584" },
-  { start: 0.76, end: 0.82, color: "#ffb678", accent: "#72ffd9" },
+  { start: 0.234, end: 0.272, color: "#00f7df", accent: "#ff008c" },
+  { start: 0.47, end: 0.51, color: "#9934ff", accent: "#ff9600" },
+  { start: 0.76, end: 0.82, color: "#ff7000", accent: "#00ffa3" },
 ];
 export const smooth = (x) => {
   x = Math.max(0, Math.min(1, x));
