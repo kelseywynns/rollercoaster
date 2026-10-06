@@ -56,20 +56,26 @@ export function boostPower(t) {
 }
 // Enemy waves leave the opening and the giant's reveal room to breathe.
 export const SKIRMISHES = [
-  [0.184, 0.202],
-  [0.286, 0.352],
-  [0.393, 0.448],
-  [0.66, 0.752],
-  [0.822, 0.951],
+  [0.07, 0.095, 2, "ghost"],
+  [0.178, 0.205, 3, "invader"],
+  [0.286, 0.352, 5, "invader"],
+  [0.393, 0.448, 4, "fighter"],
+  [0.66, 0.752, 6, "fighter"],
+  [0.822, 0.951, 8, "fighter"],
 ];
-export const TARGETS = SKIRMISHES.flatMap(([start, end], wave) =>
-  Array.from({ length: wave === 0 ? 2 : wave === 4 ? 7 : 5 }, (_, i) => ({
-    spawn: start + ((end - start) * i) / (wave === 0 ? 2 : wave === 4 ? 7 : 5),
-    kill:
-      start +
-      ((end - start) * (i + 0.9)) / (wave === 0 ? 2 : wave === 4 ? 7 : 5),
+export const TARGETS = SKIRMISHES.flatMap(([start, end, count, kind], wave) =>
+  Array.from({ length: count }, (_, i) => ({
+    spawn: start + ((end - start) * i) / count,
+    kill: start + ((end - start) * (i + 0.92)) / count,
     side: i % 2 ? 1 : -1,
     wave,
     index: i,
+    kind,
   })),
 );
+
+// Fire solutions are shared by choreography, gun aiming, damage, sound and exports.
+export const BOSS_HITS = [
+  0.518, 0.524, 0.544, 0.55, 0.568, 0.578, 0.59, 0.594, 0.598, 0.601,
+];
+export const BARREL_HIT_FRACTIONS = [0.37, 0.53, 0.68];

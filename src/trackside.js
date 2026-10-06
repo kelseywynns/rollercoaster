@@ -39,8 +39,8 @@ export class Trackside {
       const t = i / count,
         f = frameAt(t),
         hue =
-          t < 0.16
-            ? "#ff157d"
+          t < 0.234
+            ? "#285cba"
             : t < 0.5
               ? "#644bff"
               : t < 0.66
@@ -52,13 +52,13 @@ export class Trackside {
           side,
           position: f.point.clone().addScaledVector(f.right, side * 9.2),
         });
-        const color = side < 0 ? hue : "#00cfff";
+        const color = side < 0 ? hue : "#147b98";
         add(f, [side * 8.6, -0.8], [2.1, 1.5, 5.9], "#17284c");
         add(f, [side * 8.6, 0.04], [0.3, 0.15, 4.3], color, 1);
         if (i % 2 === 0) {
           add(f, [side * 9.2, 2.2], [0.8, 4.4, 0.85], "#192650");
-          add(f, [side * 9.2, 4.6], [1.2, 0.8, 1.2], color, 1);
-          add(f, [side * 9.2, 2.5], [0.94, 0.35, 1], "#ffae32", 1);
+          add(f, [side * 9.2, 4.6], [0.6, 0.25, 0.6], color, 1);
+          add(f, [side * 9.2, 2.5], [0.85, 0.16, 0.88], "#ffae32", 1);
         }
         const inside = TUNNELS.some(
           (q) => t > q.start - 0.002 && t < q.end + 0.002,
@@ -69,82 +69,94 @@ export class Trackside {
           const x = side * (19 + rand(i, 5) * 5);
           add(f, [x, -4], [15, 5, 17], "#172448");
           add(f, [x, -1.35], [15, 0.4, 17], "#143c69");
-          if (t < 0.16) {
-            // Tiny blossom gardens frame the lift, with branch and leaf silhouettes.
-            add(f, [x, h / 2], [1.8, h, 1.8], "#55265e");
-            for (let a = -1; a <= 1; a++)
-              for (let b = -1; b <= 1; b++) {
-                add(
-                  f,
-                  [x + a * 3.5, h + (1 - Math.abs(a)) * 2.7, b * 3.2],
-                  [3.6, 3.3, 3.6],
-                  ["#d00879", "#fa1689", "#a612dd"][(i + a + b + 8) % 3],
-                  2,
-                );
-              }
-            add(f, [x, h + 3], [0.65, 1.4, 0.65], "#ff9d20", 1);
-          } else if (t < 0.5) {
-            // Irregular surface-voxel geodes: low clusters reveal the islands,
-            // occasional branching formations create a close, taller silhouette.
-            const tall = i % 9 === 0;
-            const unit = 1.05;
-            const palette =
-              side < 0
-                ? ["#6821da", "#9715c8", "#c51d98"]
-                : ["#034bd1", "#077db4", "#1dbdc2"];
-            for (let c = 0; c < (tall ? 3 : 2); c++) {
-              const levels =
-                Math.floor((tall ? h * 0.82 : h * 0.27) / unit) +
-                (c === 1 ? 2 : 0);
-              for (let y = 0; y < levels; y++) {
-                const taper = y > levels - 3 ? 0 : 1;
-                for (let u = -taper; u <= taper; u++)
-                  for (let v = -taper; v <= taper; v++) {
-                    if (u === 0 && v === 0 && y > 0 && y < levels - 1) continue;
-                    const lean = Math.floor(y / 4) * (c - 1) * 0.75;
-                    add(
-                      f,
-                      [
-                        x + (c - 1) * 3.3 + u * unit + lean,
-                        y * unit + 0.6,
-                        v * unit + (c - 1) * 2,
-                      ],
-                      [unit * 0.94, unit * 0.94, unit * 0.94],
-                      palette[(y + u + v + c + 12) % 3],
-                      3,
-                    );
-                  }
-              }
-            }
-            for (let chip = 0; chip < 5; chip++)
+          if (t < 0.234) {
+            // Pac-Man maze walls: deep cobalt turns and warm dotted pellet lanes.
+            const mazeHeight = i % 9 === 0 ? 7 : 3.5;
+            add(f, [x, mazeHeight / 2], [10, mazeHeight, 10], "#101b54");
+            for (const z of [-4.8, 4.8])
               add(
                 f,
-                [
-                  x + (rand(i, chip) - 0.5) * 11,
-                  -0.45,
-                  (rand(chip, i) - 0.5) * 10,
-                ],
-                [1.1, 0.85, 1.1],
-                palette[chip % 3],
+                [x, mazeHeight + 0.05, z],
+                [10.2, 0.18, 0.18],
+                "#2860f0",
+                1,
+              );
+            for (const edge of [-4.8, 4.8])
+              add(
+                f,
+                [x + edge, mazeHeight + 0.05, 0],
+                [0.18, 0.18, 10.2],
+                "#2860f0",
+                1,
+              );
+            // Negative-space square openings keep the maze silhouette legible.
+            if (i % 9 === 0) {
+              add(f, [x, mazeHeight + 3, -3.8], [10, 6, 2.2], "#13236c");
+              add(
+                f,
+                [x, mazeHeight + 6.1, -3.8],
+                [10.2, 0.22, 2.4],
+                "#315fff",
+                1,
+              );
+            }
+            for (let pellet = 0; pellet < 4; pellet++)
+              add(
+                f,
+                [side * 12.7, 0.8, pellet * 3 - 4.5],
+                [0.7, 0.7, 0.7],
+                pellet === 0 && i % 12 === 0 ? "#ffd862" : "#bc9253",
                 3,
               );
+          } else if (t < 0.5) {
+            // Invader bunkers: stepped emerald shelters, with the iconic arch cutout.
+            const rows = [
+              "..XXXXXXX..",
+              ".XXXXXXXXX.",
+              "XXXXXXXXXXX",
+              "XXXXXXXXXXX",
+              "XXXX...XXXX",
+              "XXX.....XXX",
+            ];
+            rows.forEach((row, y) =>
+              [...row].forEach((v, k) => {
+                if (v === "X")
+                  add(
+                    f,
+                    [x + (k - 5) * 0.88, 5.2 - y * 0.88, 0],
+                    [0.84, 0.84, 4.4],
+                    ["#286644", "#318455", "#52a46a"][(y + k) % 3],
+                    3,
+                  );
+              }),
+            );
+            if (i % 9 === 0) {
+              for (let level = 0; level < 4; level++)
+                add(
+                  f,
+                  [x + side * 7, level * 2.4 + 1.2, -2],
+                  [2.1, 2.2, 2.1],
+                  level % 2 ? "#232c66" : "#343f7a",
+                );
+              add(f, [x + side * 7, 10, -2], [2.5, 0.25, 2.5], "#756eb2", 1);
+            }
           } else {
             // Arcade buildings: inset windows, stepped roofs, luminous side fins.
-            add(f, [x, h / 2], [7, h, 7], "#23255d");
-            add(f, [x, h + 1.2], [5.1, 2.4, 5.1], "#383285");
+            add(f, [x, h / 2], [7, h, 7], "#182747");
+            add(f, [x, h + 1.2], [5.1, 2.4, 5.1], "#273751");
             for (let w = -1; w <= 1; w++)
               for (let y = 3; y < h; y += 3.3)
                 add(
                   f,
                   [x + w * 1.9, y, 3.56],
                   [1.0, 1.3, 0.12],
-                  (w + i) % 3 ? "#066cb9" : "#fc198e",
+                  (w + i) % 3 ? "#1c718b" : "#af6230",
                   1,
                 );
-            add(f, [x - side * 3.6, h / 2], [0.25, h * 0.7, 2.2], color, 1);
+            add(f, [x - side * 3.6, h / 2], [0.14, h * 0.7, 0.65], color, 1);
           }
         }
-        if (i % 15 === 0) {
+        if (i % 15 === 0 && t > 0.272 && t < 0.47) {
           // Larger second-depth landmarks provide parallax against the small kerbs.
           const x = side * (36 + rand(i, 13) * 10),
             h = 14 + rand(i, 8) * 22;

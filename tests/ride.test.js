@@ -26,8 +26,8 @@ test("chapter previews and imported audio duration share a normalized timeline",
   ride.start();
   ride.seek(0.5);
   assert.equal(ride.elapsed, 123.5);
-  assert.equal(chapterIndex(ride.progress), 2);
-  ride.seek(0.75);
+  assert.equal(chapterIndex(ride.progress), 1);
+  ride.seek(0.8);
   assert.equal(chapterIndex(ride.progress), 3);
   ride.seek(2);
   assert.equal(ride.progress, 1);

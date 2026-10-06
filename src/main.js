@@ -41,37 +41,37 @@ document.querySelector("#app").innerHTML = `
     <div class="grain" aria-hidden="true"></div>
     <header class="header">
       <a class="wordmark" href="./" aria-label="Pixelrush home"><span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>PIXELRUSH<span class="wordmark-dot">✳</span></a>
-      <span class="header-caption">A RIDE BEYOND REALITY</span>
+      <span class="header-caption">ONE CREDIT. ALL IN.</span>
       <nav aria-label="Main navigation"><button class="nav-link active" id="explore-button">The experience</button><button class="nav-link" id="sound-button">The soundtrack <span class="small-dot"></span></button><button class="icon-button" id="settings-button" aria-label="Experience settings">${icon("settings")}</button></nav>
     </header>
 
     <section class="intro" aria-labelledby="hero-title">
-      <div class="eyebrow"><span class="status-dot"></span> AN IMMERSIVE AUDIOVISUAL JOURNEY</div>
-      <h1 id="hero-title">Lose yourself.<br>Find the <span>rush.</span></h1>
-      <p>A little nostalgia. A whole new world.<br>Ride through a living pixel universe, where<br class="desktop-break"> every turn takes you closer to the music.</p>
-      <div class="hero-actions"><button id="start-button" class="primary-button" disabled>Building your world <span class="loading-dots">···</span></button><span class="ride-length"><span id="duration-label">2:30</span> OF PURE ESCAPE<br><span>Just sit back. We’ll take you there.</span></span></div>
+      <div class="eyebrow"><span class="status-dot"></span> AN AUTOMATIC ARCADE RIDE</div>
+      <h1 id="hero-title">One credit.<br>Zero <span>brakes.</span></h1>
+      <p>Arcade legends. Impossible drops.<br>A first-person ride through the games you remember,<br class="desktop-break"> with your soundtrack at the controls.</p>
+      <div class="hero-actions"><button id="start-button" class="primary-button" disabled>Building your world <span class="loading-dots">···</span></button><span class="ride-length"><span id="duration-label">${formatTime(DEFAULT_DURATION)}</span> OF ARCADE CHAOS<br><span>Automatic ride. Cannons included.</span></span></div>
       <button id="headphone-button" class="headphone-note">${icon("headphones")} Better with headphones <span>↗</span></button>
     </section>
 
-    <div class="world-caption"><span class="crosshair">+</span><div><span>WORLD 01</span><strong>The floating gardens</strong></div><span class="world-coordinates">34.8° N<br>∞ POSSIBILITIES</span></div>
+    <div class="world-caption"><span class="crosshair">+</span><div><span>WORLD 01</span><strong>The neon maze</strong></div><span class="world-coordinates">01 / 04<br>READY PLAYER ONE</span></div>
     <div class="live-badge"><span class="status-dot"></span> LIVE 3D WORLD <span>/</span> <span>8-BIT SOUL</span></div>
 
     <section class="journey" aria-label="Your journey">
-      <div class="journey-heading"><span>ONE RIDE. FOUR FEELINGS.</span><span class="journey-meta">A SLOW BURN INTO OVERDRIVE ${icon("arrow")}</span></div>
-      <div class="chapter-grid">${CHAPTERS.map((c, i) => `<button class="chapter-card ${i === 0 ? "selected" : ""}" data-chapter="${i}" disabled style="--chapter-color:${c.color}" aria-label="Preview ${c.name}"><span class="chapter-number">0${i + 1}</span><div class="chapter-copy"><strong>${c.name}</strong><span>${["Ease into the extraordinary", "Leave the ordinary below", "A beautiful loss of control", "All feeling. No limits."][i]}</span></div><span class="intensity-icon" aria-hidden="true">${Array.from({ length: 5 }, (_, n) => `<i class="${n <= i ? "lit" : ""}"></i>`).join("")}</span></button>`).join("")}</div>
+      <div class="journey-heading"><span>FOUR STAGES. ONE CREDIT.</span><span class="journey-meta">FROM MAZE RUN TO BOSS FIGHT ${icon("arrow")}</span></div>
+      <div class="chapter-grid">${CHAPTERS.map((c, i) => `<button class="chapter-card ${i === 0 ? "selected" : ""}" data-chapter="${i}" disabled style="--chapter-color:${c.color}" aria-label="Preview ${c.name}"><span class="chapter-number">0${i + 1}</span><div class="chapter-copy"><strong>${c.name}</strong><span>${["Follow the power pellets", "Break the formation", "Take on Donkey Kong", "Chase the high score"][i]}</span></div><span class="intensity-icon" aria-hidden="true">${Array.from({ length: 5 }, (_, n) => `<i class="${n <= i ? "lit" : ""}"></i>`).join("")}</span></button>`).join("")}</div>
     </section>
 
     <footer class="footer"><div class="audio-credit">${equalizer}<span id="footer-track">Daydream circuit</span><span class="credit-label">ORIGINAL DEMO SOUND</span></div><span class="footer-middle">MADE OF PIXELS. MEANT TO BE FELT.</span><div class="footer-controls"><button id="mute-button" class="icon-button" aria-label="Mute sound" title="Mute (M)">${icon("volume")}</button><span class="control-divider"></span><button id="fullscreen-button" class="icon-button" aria-label="Enter fullscreen" title="Fullscreen (F)">${icon("full")}</button></div></footer>
 
     <section class="ride-hud" aria-label="Ride controls" hidden>
       <div class="ride-top"><button class="secondary-button" id="exit-button">${icon("back")} Leave the ride</button><div class="ride-chapter"><span id="ride-chapter-tag"></span><strong id="ride-chapter-name"></strong></div><button class="icon-button" id="hide-hud-button" aria-label="Hide ride controls" title="Hide controls (H)">${icon("close")}</button></div>
-      <div class="ride-bottom"><button id="pause-button" class="round-button" aria-label="Pause ride">${icon("pause")}</button><div class="ride-timeline"><div class="timeline-labels"><span id="ride-time">0:00</span><span id="ride-now-playing">DAYDREAM CIRCUIT</span><span id="ride-total">2:30</span></div><input id="progress" aria-label="Ride progress" type="range" min="0" max="1000" value="0" step="1" /><div class="timeline-chapters"><span>AWAKENING</span><span>ASCENT</span><span>FREEFALL</span><span>HYPERDRIVE</span></div></div><div class="speed-stat"><strong id="speed-value">24</strong><span>KM/H</span></div></div>
+      <div class="ride-bottom"><button id="pause-button" class="round-button" aria-label="Pause ride">${icon("pause")}</button><div class="ride-timeline"><div class="timeline-labels"><span id="ride-time">0:00</span><span id="ride-now-playing">DAYDREAM CIRCUIT</span><span id="ride-total">${formatTime(DEFAULT_DURATION)}</span></div><input id="progress" aria-label="Ride progress" type="range" min="0" max="1000" value="0" step="1" /><div class="timeline-chapters"><span>MAZE RUN</span><span>INVADERS</span><span>KONG</span><span>HIGH SCORE</span></div></div><div class="speed-stat"><strong id="speed-value">24</strong><span>KM/H</span></div></div>
       <div class="ride-hint">DRAG TO LOOK AROUND <span>·</span> SPACE TO PAUSE <span>·</span> H TO HIDE</div>
     </section>
     <button id="show-hud-button" class="secondary-button" hidden>Show controls</button>
     <div class="pause-notice" hidden><span>TAKE A BREATH</span><strong>The world can wait.</strong><button class="primary-button" id="resume-button">Keep going ${icon("play")}</button></div>
 
-    <section class="finish-screen" hidden aria-labelledby="finish-title"><span class="eyebrow">YOU WENT BEYOND</span><h2 id="finish-title">That was a<br>beautiful <em>rush.</em></h2><p>Same world. A different feeling every time.</p><button id="replay-button" class="primary-button">Ride it again ${icon("replay")}</button><button id="finish-home-button" class="text-button">Back to the gardens ${icon("arrow")}</button></section>
+    <section class="finish-screen" hidden aria-labelledby="finish-title"><span class="eyebrow">STAGE CLEAR</span><h2 id="finish-title">Credit<br><em>complete.</em></h2><p>One more run. One more track.</p><button id="replay-button" class="primary-button">Ride it again ${icon("replay")}</button><button id="finish-home-button" class="text-button">Back to the arcade ${icon("arrow")}</button></section>
     <div id="toast" role="status" aria-live="polite"></div>
     <div id="webgl-error" hidden><h2>A world worth waiting for.</h2><p>This experience needs WebGL. Enable hardware acceleration in your browser and reload to step inside.</p><button class="primary-button" onclick="location.reload()">Try again</button></div>
   </main>
@@ -95,7 +95,7 @@ let world,
   currentChapter = -1,
   hudHidden = false,
   soundFailed = false;
-let toastTimer;
+let toastTimer, hudTimer;
 let exporting = false;
 function toast(message) {
   $("#toast").textContent = message;
@@ -150,6 +150,10 @@ async function startRide(start = 0) {
   $("#pause-button").setAttribute("aria-label", "Pause ride");
   $("#ride-total").textContent = formatTime(ride.duration);
   soundFailed = false;
+  clearTimeout(hudTimer);
+  hudTimer = setTimeout(() => {
+    if (ride.state === "riding" && !hudHidden) toggleHud();
+  }, 5000);
   try {
     await soundtrack.play(ride.elapsed, ride.duration);
     if (ride.state !== "riding") soundtrack.pause();
@@ -159,6 +163,7 @@ async function startRide(start = 0) {
   }
 }
 function exitRide() {
+  clearTimeout(hudTimer);
   ride.stop();
   soundtrack.stop();
   experience.dataset.mode = "idle";

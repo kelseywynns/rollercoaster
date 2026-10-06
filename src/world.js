@@ -3,7 +3,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { clamp } from "./ride.js";
+import { clamp, DEFAULT_DURATION } from "./ride.js";
 import { createMotionProfile, flightPose, railLift } from "./motion.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import {
@@ -16,6 +16,7 @@ import { tunnelCoverage, boostPower, inRailGap } from "./story.js";
 import { Trackside } from "./trackside.js";
 import { ArcadeCombat } from "./combat.js";
 import { makeRushPass } from "./rush-pass.js";
+import { Stagecraft } from "./stagecraft.js";
 import { ArcadeArena } from "./arena.js";
 import { Encounters } from "./encounters.js";
 
@@ -127,7 +128,7 @@ export class VoxelWorld {
     container.appendChild(this.renderer.domElement);
     this.renderer.domElement.setAttribute(
       "aria-label",
-      "An animated 3D voxel rollercoaster through floating islands and glowing arcade worlds",
+      "An automatic voxel arcade coaster with Pac-Man, Space Invaders, and a Donkey Kong barrel battle",
     );
     this.curve = new THREE.CatmullRomCurve3(
       trackPoints.map((p) => new THREE.Vector3(...p)),
@@ -170,6 +171,7 @@ export class VoxelWorld {
       frameAt: (t) => this.frameAt(t),
       motion: this.motion,
     });
+    this.stagecraft = new Stagecraft(this.scene, (t) => this.frameAt(t));
     this.makeCar();
     this.combat = new ArcadeCombat(this.scene, this.camera, {
       frameAt: (t) => this.frameAt(t),
@@ -204,7 +206,7 @@ export class VoxelWorld {
     this.scene.add(this.camera);
     this.car = new THREE.Group();
     this.camera.add(this.car);
-    this.headlight = new THREE.PointLight("#28bfff", 55, 45, 2);
+    this.headlight = new THREE.PointLight("#6eb9db", 14, 45, 2);
     this.headlight.position.set(0, 3, -10);
     this.camera.add(this.headlight);
     const navy = new THREE.MeshStandardMaterial({
@@ -213,25 +215,27 @@ export class VoxelWorld {
       metalness: 0.4,
     });
     const mint = new THREE.MeshStandardMaterial({
-      color: "#00cdb9",
+      color: "#17677a",
       roughness: 0.35,
       metalness: 0.3,
     });
-    const coral = new THREE.MeshBasicMaterial({ color: "#ff378d" });
+    const coral = new THREE.MeshBasicMaterial({ color: "#c95d21" });
     const add = (x, y, z, w, h, d, mat) => {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
       mesh.position.set(x, y, z);
       this.car.add(mesh);
     };
     add(0, -2.2, -3.9, 4.5, 0.65, 0.6, navy);
-    add(0, -1.85, -3.9, 4.6, 0.12, 0.65, mint);
-    add(0, -1.91, -3.54, 4.2, 0.08, 0.06, coral);
+    add(0, -1.85, -3.9, 4.6, 0.055, 0.16, mint);
+    add(0, -1.91, -3.54, 4.2, 0.035, 0.06, coral);
     for (const side of [-1, 1]) {
       add(side * 2.18, -1.95, -2.7, 0.28, 0.8, 2.8, navy);
-      add(side * 2.18, -1.51, -2.7, 0.32, 0.08, 2.8, mint);
+      add(side * 2.18, -1.51, -2.7, 0.12, 0.035, 2.8, mint);
       add(side * 1.4, -1.85, -2.2, 0.16, 0.9, 0.16, navy);
     }
     add(0, -1.4, -2.2, 2.95, 0.17, 0.17, navy);
+    this.car.scale.setScalar(0.84);
+    this.car.position.y = -0.3;
     this.car.visible = false;
   }
 
@@ -654,12 +658,12 @@ export class VoxelWorld {
             new THREE.TubeGeometry(
               line,
               Math.max(8, points.length * 2),
-              0.47,
+              0.24,
               5,
               false,
             ),
             new THREE.MeshBasicMaterial({
-              color: i ? "#ff238c" : "#00dbff",
+              color: i ? "#8f2355" : "#138ea8",
               toneMapped: false,
             }),
           ),
@@ -674,8 +678,8 @@ export class VoxelWorld {
           ),
           new THREE.MeshStandardMaterial({
             color: "#28355c",
-            metalness: 0.6,
-            roughness: 0.3,
+            metalness: 0.4,
+            roughness: 0.48,
           }),
         );
         base.position.y = -0.8;
@@ -826,13 +830,14 @@ export class VoxelWorld {
     energy = 0,
     gentle = false,
     delta = 0.016,
-    duration = 150,
+    duration = DEFAULT_DURATION,
   }) {
     this.energy += (energy - this.energy) * Math.min(1, delta * 5);
     const calm = gentle || this.reducedMotion;
     this.car.visible = mode !== "idle";
     setCrystalTime(time);
     const motion = this.motion.sample(progress, duration);
+    this.stagecraft.update({ route: motion.t, time, active: mode !== "idle" });
     this.arena.update({
       route: motion.t,
       time,
@@ -857,7 +862,7 @@ export class VoxelWorld {
       );
       landing = pose.landing;
       this.camera.position.copy(pose.position);
-      this.car.position.y = calm ? 0 : -landing * 0.18;
+      this.car.position.y = -0.3 - (calm ? 0 : landing * 0.18);
       this.car.rotation.x = calm ? 0 : -landing * 0.045;
       const target = this.curve.getPointAt(
         Math.min(1, t + (calm ? 0.009 : 0.005)),
@@ -867,14 +872,17 @@ export class VoxelWorld {
       if (this.arena.focusWeight > 0)
         target.lerp(
           this.arena.focusTarget,
-          this.arena.focusWeight * (calm ? 0.55 : 1),
+          this.arena.focusWeight * (calm ? 0.55 : 1.25),
         );
       if (t > 0.997) target.copy(this.camera.position).add(tangent);
       this.camera.up.copy(up);
       this.camera.lookAt(target);
       const nextTangent = this.curve.getTangentAt(Math.min(1, t + 0.008));
       const turn = tangent.x * nextTangent.z - tangent.z * nextTangent.x;
-      this.camera.rotateZ(calm ? 0 : clamp(turn * 3.0, -0.36, 0.36));
+      const bossFraming = this.arena.actors.visible && motion.t < 0.614;
+      this.camera.rotateZ(
+        calm ? 0 : clamp(turn * 3.0, -0.36, 0.36) * (bossFraming ? 0.26 : 1),
+      );
       this.camera.rotateY(this.look.x * 0.34);
       this.camera.rotateX(this.look.y * 0.19 + (calm ? 0 : pose.pitch));
       const rush = clamp((speed - 12) / 65);
@@ -901,6 +909,7 @@ export class VoxelWorld {
       active: mode !== "idle",
       calm,
       landing,
+      arena: this.arena,
     });
     this.rushPass.uniforms.amount.value =
       calm || mode === "idle"
@@ -934,8 +943,8 @@ export class VoxelWorld {
       .lerp(new THREE.Color("#040b20"), inside);
     this.scene.fog.density = 0.0008 + inside * 0.002;
     this.headlight.visible = mode !== "idle";
-    this.headlight.intensity = this.arena.actors.visible ? 24 : 55;
-    this.bloom.strength = 0.42 + this.energy * 0.12;
+    this.headlight.intensity = this.arena.actors.visible ? 3 : 12;
+    this.bloom.strength = 0.3 + this.energy * 0.1;
     this.composer.render();
   }
 }

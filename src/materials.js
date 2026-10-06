@@ -43,10 +43,11 @@ export function setCrystalTime(time) {
 export function crystalMaterial(intensity = 0.4) {
   const material = pixelMaterial("#ffffff", intensity, true);
   material.metalness = 0.16;
-  material.roughness = 0.17;
-  material.clearcoat = 1;
+  material.roughness = 0.24;
+  material.clearcoat = 0.72;
+  material.clearcoatRoughness = 0.28;
   material.ior = 1.46;
-  material.envMapIntensity = 1.15;
+  material.envMapIntensity = 0.58;
   material.onBeforeCompile = (shader) => {
     shader.uniforms.crystalTime = crystalClock;
     shader.vertexShader =

@@ -1,4 +1,4 @@
-import { clamp } from "./ride.js";
+import { clamp, DEFAULT_DURATION } from "./ride.js";
 import { boostPower, JUMPS } from "./story.js";
 
 // Solve speed from changes in potential energy, then integrate dt = ds / v.
@@ -19,10 +19,10 @@ export function createMotionProfile(curve, samples = 3600) {
     const previousSpeed = speed,
       dh = heights[i] - heights[i - 1];
     if (t < 0.012) {
-      speed = 3.2 + 27.8 * Math.sin(((t / 0.012) * Math.PI) / 2);
+      speed = 3.2 + 42.8 * Math.sin(((t / 0.012) * Math.PI) / 2);
     } else if (t < 0.166) {
       const crest = clamp((t - 0.135) / 0.031);
-      speed = (38 + (18 * t) / 0.166) * (1 - 0.62 * crest * crest);
+      speed = (56 + (28 * t) / 0.166) * (1 - 0.72 * crest * crest);
     } else {
       const boost = (t > 0.66 ? 5.4 : 0.75) + boostPower(t) * 46;
       const drag = 0.00065 * speed * speed;
@@ -49,7 +49,7 @@ export function createMotionProfile(curve, samples = 3600) {
       const lo = Math.min(samples - 1, Math.floor(index));
       return times[lo] + (times[lo + 1] - times[lo]) * (index - lo);
     },
-    sample(progress, duration = 150) {
+    sample(progress, duration = DEFAULT_DURATION) {
       const p = clamp(progress);
       let lo = 0,
         hi = samples;

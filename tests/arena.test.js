@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { VoxelWorld, trackPoints } from "../src/world.js";
 import { createMotionProfile } from "../src/motion.js";
 import { ArcadeArena } from "../src/arena.js";
-import { ARENA } from "../src/story.js";
+import { ARENA, BOSS_HITS } from "../src/story.js";
 import { effectCues } from "../src/effects-audio.js";
 
 const world = Object.create(VoxelWorld.prototype);
@@ -132,4 +132,50 @@ test("the progressive breakup replays after seeking without invalid GPU transfor
   assert.equal(arena.warmLight.intensity, 0);
   assert.equal(arena.impactLight.intensity, 0);
   assert.ok(arena.projectiles.every((p) => p.light.intensity === 0));
+});
+
+test("cannon hits follow moving barrels and the third hit breaks their actual voxels", () => {
+  for (const duration of [110, 240]) {
+    arena.buildBattle(duration);
+    assert.equal(
+      arena.fireEvents.filter((e) => e.kind === "boss").length,
+      BOSS_HITS.length,
+    );
+    for (const [index, barrel] of arena.projectiles.entries()) {
+      const hits = arena.fireEvents.filter(
+        (e) => e.kind === "barrel" && e.target === index,
+      );
+      assert.equal(hits.length, 3);
+      for (const hit of hits) {
+        update(hit.hitTime, duration);
+        assert.ok(
+          hit.point.distanceTo(barrel.group.position) < 0.001,
+          "Laser endpoint must coincide with the barrel at contact",
+        );
+      }
+      update(barrel.destroyTime - 1 / 60, duration);
+      assert.equal(barrel.group.visible, true);
+      assert.equal(barrel.debris.visible, false);
+      update(barrel.destroyTime + 1 / 60, duration);
+      assert.equal(barrel.group.visible, false);
+      assert.equal(barrel.debris.visible, true);
+      assert.equal(barrel.debris.count, barrel.cells.length);
+      assert.ok(
+        barrel.destroyTime < motion.progressAt(barrel.cue.pass) * duration,
+      );
+      const snapshot = Array.from(barrel.debris.instanceMatrix.array);
+      update(0, duration);
+      update(barrel.destroyTime + 1 / 60, duration);
+      assert.deepEqual(
+        Array.from(barrel.debris.instanceMatrix.array),
+        snapshot,
+      );
+    }
+    update(motion.progressAt(BOSS_HITS.at(-1) + 0.0001) * duration, duration);
+    assert.ok(
+      arena.damagePips.every(
+        (p) => p.material.color.getHexString() === "24283a",
+      ),
+    );
+  }
 });

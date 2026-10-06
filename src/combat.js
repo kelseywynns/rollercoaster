@@ -1,27 +1,70 @@
 import * as THREE from "three";
-import { TARGETS, smooth } from "./story.js";
+import { TARGETS, SKIRMISHES, smooth } from "./story.js";
 import { crystalMaterial, pixelGeometry } from "./materials.js";
 import { flightPose } from "./motion.js";
 
 const dummy = new THREE.Object3D(),
   color = new THREE.Color();
 const box = new THREE.BoxGeometry(1, 1, 1);
-const pattern = [
-  "..X.......X..",
-  ".XXX.....XXX.",
-  "XXXXXXXXXXXXX",
-  ".XXOOXXXOOXX.",
-  "..XXXXXXXXX..",
-  "...XXKKKXX...",
-  "..XXX...XXX..",
-  ".XX.......XX.",
+const patterns = [
+  // Space Invaders crab, squid and octopus: the silhouettes carry the identity.
+  [
+    "..X.....X..",
+    "...X...X...",
+    "..XXXXXXX..",
+    ".XX.XXX.XX.",
+    "XXXXXXXXXXX",
+    "X.XXXXXXX.X",
+    "X.X.....X.X",
+    "...XX.XX...",
+  ],
+  [
+    "...XX...",
+    "..XXXX..",
+    ".XXXXXX.",
+    "XX.XX.XX",
+    "XXXXXXXX",
+    "..X..X..",
+    ".X.XX.X.",
+    "X.X..X.X",
+  ],
+  [
+    "..XXXXXX..",
+    ".XXXXXXXX.",
+    "XXXXXXXXXX",
+    "XX..XX..XX",
+    "XXXXXXXXXX",
+    "..XX..XX..",
+    ".XX.XX.XX.",
+    "XX......XX",
+  ],
+];
+const fighterPattern = [
+  "R....R",
+  "RR..RR",
+  "RY..YR",
+  ".RYYR.",
+  "..CC..",
+  ".CWWC.",
+  "CC..CC",
+  "C....C",
+];
+const ghostPattern = [
+  "..XXXX..",
+  ".XXXXXX.",
+  "XXXXXXXX",
+  "XXWWWWXX",
+  "XXWBWBXX",
+  "XXXXXXXX",
+  "XXXXXXXX",
+  "XX.XX.XX",
 ];
 const random = (i) => {
   const n = Math.sin(i * 93.13) * 43617.33;
   return n - Math.floor(n);
 };
 export const shotOffsets = [-0.81, -0.54, -0.27, 0];
-export const shotFlight = 0.22;
+export const shotFlight = 0.2;
 export function combatEvents(motion, duration) {
   return TARGETS.map((cue, i) => ({
     ...cue,
@@ -30,37 +73,28 @@ export function combatEvents(motion, duration) {
     killTime: motion.progressAt(cue.kill) * duration,
   }));
 }
-
-const patterns = [
-  pattern,
-  [
-    "......X......",
-    "..XX.XXX.XX..",
-    ".XXXXXXXXXXX.",
-    "XXXOOXXXOOXXX",
-    ".XXXXXXXXXXX.",
-    "..XXKKKKKXX..",
-    "...XX...XX...",
-    "....X...X....",
-  ],
-  [
-    "X.....X.....X",
-    "XX...XXX...XX",
-    ".XXXXXXXXXXX.",
-    "..XXOXXXOXX..",
-    "...XXXXXXX...",
-    "..XXXKKKXXX..",
-    ".XX..XXX..XX.",
-    "X.....X.....X",
-  ],
-];
+export function shotOffsetsFor(cue) {
+  return cue.kind === "ghost"
+    ? [-0.45, 0]
+    : cue.kind === "invader"
+      ? [-0.44, -0.22, 0]
+      : [-0.66, -0.44, -0.22, 0];
+}
 function makeTarget(cue, id) {
-  const pattern = patterns[id % patterns.length];
+  const pattern =
+    cue.kind === "ghost"
+      ? ghostPattern
+      : cue.kind === "fighter"
+        ? fighterPattern
+        : patterns[id % patterns.length];
   const cells = [];
-  const tint = ["#ee136e", "#7230f3", "#fa6208", "#176aff", "#db186b"][
-    cue.wave
-  ];
-  const turret = id % 4 === 3;
+  const tint =
+    cue.kind === "ghost"
+      ? cue.index % 2
+        ? "#04b9d2"
+        : "#ec588b"
+      : ["#8fe52c", "#36cabb", "#b877e6"][id % 3];
+  const turret = false;
   for (let y = 0; y < pattern.length; y++)
     for (let x = 0; x < pattern[y].length; x++) {
       const c = pattern[y][x];
@@ -69,12 +103,19 @@ function makeTarget(cue, id) {
         if (z === 0 && c === "K") continue;
         cells.push({
           position: new THREE.Vector3(
-            (x - 6) * 0.62,
-            (3.5 - y) * 0.62,
-            z * 0.58 + (c === "O" ? 0.27 : 0),
+            (x - (pattern[y].length - 1) / 2) * 0.8,
+            (3.5 - y) * 0.8,
+            z * 0.65,
           ),
-          color: c === "O" ? "#91ffc2" : c === "K" ? "#19112f" : tint,
-          size: 0.56,
+          color:
+            {
+              W: "#d6e4ec",
+              B: "#182c90",
+              R: "#d93740",
+              Y: "#deb941",
+              C: "#185da4",
+            }[c] || tint,
+          size: 0.74,
         });
       }
     }
@@ -84,11 +125,11 @@ function makeTarget(cue, id) {
         cells.push({
           position: new THREE.Vector3(x * 0.62, -1, z * 0.62),
           color: "#ff7c18",
-          size: 0.56,
+          size: 0.74,
         });
   const mesh = new THREE.InstancedMesh(
     pixelGeometry,
-    crystalMaterial(0.28),
+    crystalMaterial(0.15),
     cells.length,
   );
   cells.forEach((c, i) => {
@@ -101,12 +142,6 @@ function makeTarget(cue, id) {
   });
   const group = new THREE.Group();
   group.add(mesh);
-  const eye = new THREE.Mesh(
-    new THREE.BoxGeometry(1.3, 0.22, 0.12),
-    new THREE.MeshBasicMaterial({ color: "#b6ffd2", toneMapped: false }),
-  );
-  eye.position.set(0, -0.12, 0.98);
-  group.add(eye);
   return { group, cells, mesh, turret, tint };
 }
 function beam(tint, width = 0.18) {
@@ -170,6 +205,14 @@ export class ArcadeCombat {
       target.ring = ring;
       return target;
     });
+    this.formations = ["invader", "fighter"].flatMap((kind) =>
+      Array.from({ length: 12 }, (_, i) => {
+        const model = makeTarget({ kind, wave: 1, index: i }, i);
+        model.group.scale.setScalar(0.68);
+        this.root.add(model.group);
+        return { ...model, kind, index: i };
+      }),
+    );
     this.shots = Array.from({ length: 16 }, (_, i) => {
       const b = beam(i % 2 ? "#8affdb" : "#39c9ff", 0.16);
       this.root.add(b);
@@ -182,14 +225,14 @@ export class ArcadeCombat {
     });
     this.weapons = [-1, 1].map((side) => {
       const gun = new THREE.Group();
-      gun.position.set(side * 1.55, -1.3, -2.8);
+      gun.position.set(side * 1.68, -1.54, -3.05);
       camera.add(gun);
       const shell = new THREE.Mesh(
         new THREE.BoxGeometry(0.56, 0.56, 1.35),
         new THREE.MeshStandardMaterial({
           color: "#576a82",
           metalness: 0.65,
-          roughness: 0.22,
+          roughness: 0.48,
         }),
       );
       shell.position.z = 0.35;
@@ -199,7 +242,7 @@ export class ArcadeCombat {
         new THREE.MeshStandardMaterial({
           color: "#267c96",
           metalness: 0.75,
-          roughness: 0.19,
+          roughness: 0.45,
         }),
       );
       barrel.position.z = 1.2;
@@ -280,17 +323,37 @@ export class ArcadeCombat {
     const f = this.frameAt(route);
     const kill = this.motion.progressAt(cue.kill) * duration;
     const phase = kill - time;
+    const age = Math.max(
+      0,
+      time - this.motion.progressAt(cue.spawn) * duration,
+    );
+    const kind = cue.kind;
+    const march = Math.round(Math.sin(time * 2.1) * 2) * 2;
+    const dive = kind === "fighter" ? Math.max(0, 1 - phase / 1.4) : 0;
+    const side =
+      kind === "invader"
+        ? cue.side * (8 + march)
+        : cue.side * (16 - 10 * dive + Math.sin(age * 3) * 2);
+    const forward =
+      kind === "fighter"
+        ? 59 - 32 * dive
+        : kind === "ghost"
+          ? 32
+          : 46 + Math.max(0, phase) * 6;
+    const height =
+      kind === "fighter"
+        ? 19 - 12 * dive
+        : kind === "ghost"
+          ? 8
+          : 12 + (cue.index % 2) * 4;
     const p = f.point
       .clone()
-      .addScaledVector(f.tangent, 39 + Math.max(0, phase) * 8)
-      .addScaledVector(
-        f.right,
-        cue.side * (9 + Math.sin(time * 2.7 + cue.index) * 5),
-      )
-      .addScaledVector(f.normal, 10 + Math.sin(time * 2.2 + cue.wave) * 3);
+      .addScaledVector(f.tangent, forward)
+      .addScaledVector(f.right, side)
+      .addScaledVector(f.normal, height);
     return { position: p, frame: f };
   }
-  update({ time, duration, active, calm, landing = 0 }) {
+  update({ time, duration, active, calm, landing = 0, arena }) {
     this.root.visible = active;
     this.weapons.forEach((v) => (v.gun.visible = active));
     this.shield.visible = active;
@@ -301,6 +364,32 @@ export class ArcadeCombat {
       this.eventDuration = duration;
     }
     const events = this.events;
+    const routeNow = this.motion.sample(time / duration, duration).t;
+    const band = SKIRMISHES.findIndex(
+      ([a, b]) => routeNow > a - 0.009 && routeNow < b,
+    );
+    const kind = SKIRMISHES[band]?.[3];
+    const formationFrame = this.frameAt(routeNow);
+    const cleared = events.filter(
+      (e) => e.wave === band && time >= e.killTime,
+    ).length;
+    this.formations.forEach((m) => {
+      m.group.visible = active && m.kind === kind && m.index >= cleared * 2;
+      if (!m.group.visible) return;
+      const row = Math.floor(m.index / 4),
+        col = m.index % 4;
+      m.group.position
+        .copy(formationFrame.point)
+        .addScaledVector(formationFrame.tangent, 96 + row * 14)
+        .addScaledVector(
+          formationFrame.right,
+          (col - 1.5) * 12 + Math.round(Math.sin(time * 1.3) * 2) * 2,
+        )
+        .addScaledVector(formationFrame.normal, 16 + row * 7);
+      m.group.lookAt(this.camera.position);
+      if (kind === "fighter")
+        m.group.rotation.z += Math.sin(time * 2 + col) * 0.18;
+    });
     this.shots.forEach((b) => (b.visible = false));
     this.enemyShots.forEach((b) => (b.visible = false));
     if (this.score) this.score.visible = false;
@@ -337,7 +426,7 @@ export class ArcadeCombat {
         aim = { point: position, killTime: event.killTime };
       target.ring.visible = false;
       // Four staggered hits, each fired from the car's position at emission time.
-      for (const offset of shotOffsets) {
+      for (const offset of shotOffsetsFor(target.cue)) {
         const hit = event.killTime + offset,
           launch = hit - shotFlight,
           dt = time - launch;
@@ -457,19 +546,70 @@ export class ArcadeCombat {
         }
       }
     }
+    for (const event of arena?.fireEvents || []) {
+      const launch = event.hitTime - shotFlight,
+        dt = time - launch;
+      if (dt < -0.25 || dt > shotFlight) continue;
+      if (dt < 0) {
+        aim = { point: event.point, killTime: event.hitTime };
+        continue;
+      }
+      const route = this.motion.sample(launch / duration, duration).t;
+      const from = flightPose(
+        route,
+        launch,
+        duration,
+        this.motion,
+        this.frameAt,
+      );
+      const origin = from.position
+        .clone()
+        .addScaledVector(from.frame.tangent, 5)
+        .addScaledVector(from.frame.right, event.target % 2 ? 1.68 : -1.68)
+        .addScaledVector(from.frame.normal, -1.54);
+      const q = dt / shotFlight;
+      if (n < this.shots.length) {
+        const shot = this.shots[n++];
+        shot.visible = true;
+        setBeam(
+          shot,
+          origin.clone().lerp(event.point, Math.max(0, q - 0.24)),
+          origin.clone().lerp(event.point, q),
+        );
+      }
+      flash = Math.max(flash, Math.exp(-dt * 40));
+      aim = { point: event.point, killTime: event.hitTime };
+    }
+    if (
+      arena?.actors.visible &&
+      arena.boss.visible &&
+      arena.fireEvents.length
+    ) {
+      const next =
+        arena.fireEvents.find((e) => e.hitTime > time) ||
+        arena.fireEvents.at(-1);
+      const prev =
+        arena.fireEvents.findLast((e) => e.hitTime <= time) ||
+        arena.fireEvents[0];
+      const blend = smooth((time - (next.hitTime - shotFlight - 0.26)) / 0.24);
+      aim = {
+        point: prev.point.clone().lerp(next.point, blend),
+        killTime: next.hitTime,
+      };
+    }
     this.camera.updateMatrixWorld(true);
     this.weapons.forEach(({ gun, muzzle, side }) => {
-      gun.position.z = -2.8 + flash * 0.13;
-      gun.position.y = -1.3 - (calm ? 0 : landing * 0.18);
+      gun.position.z = -3.05 + flash * 0.13;
+      gun.position.y = -1.54 - (calm ? 0 : landing * 0.18);
       if (aim) gun.lookAt(aim.point);
       else gun.quaternion.identity();
       // Mesh +Z is its barrel direction; parked guns point forward in camera space.
       if (!aim) gun.rotation.y = Math.PI;
       muzzle.visible = flash > 0.05;
-      muzzle.scale.setScalar(0.6 + flash * 0.7);
+      muzzle.scale.setScalar(0.4 + flash * 0.5);
       muzzle.rotation.z = time * 30 * side;
     });
-    this.muzzleLight.intensity = flash * 14;
+    this.muzzleLight.intensity = flash * 9;
     this.shield.material.opacity = shield * (calm ? 0.25 : 1);
   }
 }

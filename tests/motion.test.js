@@ -16,8 +16,8 @@ const motion = createMotionProfile(curve);
 
 test("the ride begins slowly and reserves the first major drop for the build-up", () => {
   assert.ok(motion.sample(0).speed < 4);
-  const firstCrestTime = motion.progressAt(0.166) * 150;
-  assert.ok(firstCrestTime > 30 && firstCrestTime < 45);
+  const firstCrestTime = motion.progressAt(0.166) * 110;
+  assert.ok(firstCrestTime > 18 && firstCrestTime < 24);
   assert.ok(motion.sample(motion.progressAt(0.155)).height > 140);
 });
 

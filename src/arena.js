@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { ARENA, smooth } from "./story.js";
-import { makeTitan, voxelEllipsoid, collectVoxels, hash } from "./sculpt.js";
+import { ARENA, BOSS_HITS, BARREL_HIT_FRACTIONS, smooth } from "./story.js";
+import { makeTitan, makeBarrel, collectVoxels, hash } from "./sculpt.js";
 import { crystalMaterial } from "./materials.js";
 
 const up = new THREE.Vector3(0, 1, 0),
@@ -76,9 +76,18 @@ export class ArcadeArena {
     this.makeArchitecture();
     this.boss = makeTitan();
     this.actors.add(this.boss);
+    this.damagePips = BOSS_HITS.map((_, i) => {
+      const pip = new THREE.Mesh(
+        new THREE.BoxGeometry(1.8, 1.0, 0.5),
+        new THREE.MeshBasicMaterial({ color: "#b95026" }),
+      );
+      pip.position.set((i - 4.5) * 2.2, 67.8, 12);
+      this.boss.add(pip);
+      return pip;
+    });
     this.focusTarget = new THREE.Vector3();
     this.focusWeight = 0;
-    this.warmLight = new THREE.PointLight("#ff830d", 350, 110, 2);
+    this.warmLight = new THREE.PointLight("#ffa660", 130, 110, 2);
     this.warmLight.position.set(0, 18, 22);
     scene.add(this.warmLight);
     this.impactLight = new THREE.PointLight("#45ffdc", 0, 145, 2);
@@ -97,26 +106,13 @@ export class ArcadeArena {
       const origin = hand.localToWorld(new THREE.Vector3(0, 0, 10));
       const passFrame = frameAt(cue.pass),
         target = at(passFrame, cue.side * 12, 4.5);
-      const group = new THREE.Group();
-      group.name = "Thrown plasma drum";
-      voxelEllipsoid(
-        group,
-        [0, 0, 0],
-        [4.6, 4.6, 6],
-        (x, y, z) =>
-          Math.abs(z) > 3.1 && Math.abs(z) < 4.6
-            ? "#167dff"
-            : Math.abs(z) > 4.6
-              ? "#ffda55"
-              : "#ff4f0b",
-        0.74,
-        0.75,
-      );
-      const light = new THREE.PointLight("#ff6715", 380, 42, 2);
+      const group = makeBarrel();
+      const light = new THREE.PointLight("#e39b36", 60, 42, 2);
       scene.add(light);
       this.actors.add(group);
       return {
         group,
+        cells: group.userData.cells,
         cue,
         origin,
         target,
@@ -128,9 +124,83 @@ export class ArcadeArena {
     });
   }
 
+  buildBattle(duration) {
+    if (this.battleDuration === duration) return;
+    this.battleDuration = duration;
+    this.fireEvents = [];
+    this.projectiles.forEach((p, index) => {
+      const release = this.motion.progressAt(p.cue.release) * duration;
+      const pass = this.motion.progressAt(p.cue.pass) * duration;
+      p.hitTimes = BARREL_HIT_FRACTIONS.map(
+        (f) => release + (pass - release) * f,
+      );
+      p.destroyTime = p.hitTimes.at(-1);
+      const flight = BARREL_HIT_FRACTIONS.at(-1);
+      p.deathPoint = this.projectilePoint(p, flight);
+      p.deathRotation = new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(flight * 8, flight * 3.2, flight * 1.4),
+      );
+      if (!p.debris) {
+        p.debris = new THREE.InstancedMesh(
+          box,
+          crystalMaterial(0.19),
+          p.cells.length,
+        );
+        p.debris.frustumCulled = false;
+        p.cells.forEach((c, i) => p.debris.setColorAt(i, c.color));
+        this.actors.add(p.debris);
+      }
+      p.hitTimes.forEach((hitTime, i) =>
+        this.fireEvents.push({
+          hitTime,
+          point: this.projectilePoint(p, BARREL_HIT_FRACTIONS[i]),
+          kind: "barrel",
+          target: index,
+          final: i === 2,
+        }),
+      );
+    });
+    BOSS_HITS.forEach((route, i) => {
+      this.poseBoss(route);
+      const head = i % 3 === 2 || i > 6;
+      const part = this.boss.userData.parts[head ? "head" : "torso"];
+      const point = part.localToWorld(
+        new THREE.Vector3(...(head ? [0, -2, 14] : [i % 2 ? 5 : -5, 37, 10])),
+      );
+      this.fireEvents.push({
+        hitTime: this.motion.progressAt(route) * duration,
+        point,
+        kind: "boss",
+        target: i,
+        final: i === BOSS_HITS.length - 1,
+      });
+    });
+    this.fireEvents.sort((a, b) => a.hitTime - b.hitTime);
+    if (!this.hitSparks) {
+      this.hitSparks = new THREE.InstancedMesh(box, crystalMaterial(0.35), 160);
+      this.hitSparks.frustumCulled = false;
+      this.actors.add(this.hitSparks);
+      for (let i = 0; i < 160; i++)
+        this.hitSparks.setColorAt(
+          i,
+          new THREE.Color(i % 4 ? "#c4894c" : "#7ce3ed"),
+        );
+    }
+  }
+  projectilePoint(p, flight) {
+    return new THREE.Vector3()
+      .lerpVectors(p.origin, p.target, flight)
+      .addScaledVector(
+        p.normal,
+        0.5 * 9.81 * p.baseFlight ** 2 * flight * (1 - flight),
+      );
+  }
+
   makeArchitecture() {
     const metal = new THREE.MeshStandardMaterial({
-      color: "#8a1137",
+      color: "#bd2642",
+      emissive: "#6f101b",
+      emissiveIntensity: 0.18,
       metalness: 0.6,
       roughness: 0.24,
     });
@@ -140,9 +210,11 @@ export class ArcadeArena {
       roughness: 0.32,
     });
     const floor = new THREE.MeshStandardMaterial({
-      color: "#5c102c",
+      color: "#862036",
+      emissive: "#430914",
+      emissiveIntensity: 0.12,
       metalness: 0.48,
-      roughness: 0.18,
+      roughness: 0.44,
     });
     const cyan = new THREE.MeshBasicMaterial({
       color: "#00acb9",
@@ -172,10 +244,12 @@ export class ArcadeArena {
           cyan,
         );
         if (i % 5 === 0) {
-          const base = at(f, side * 53, -70),
-            top = at(f, side * 53, 94);
+          const supportX = side < 0 ? -53 : 93;
+          const base = at(f, supportX, -70),
+            top = at(f, supportX, 94);
           build.beam(base, top, 3, dark);
           for (const y of [-8, 27, 64]) {
+            if (side > 0) continue;
             build.block(f, side * 51, y, 32, 2.4, 30, floor);
             build.beam(
               at(f, side * 34, y - 5),
@@ -198,18 +272,32 @@ export class ArcadeArena {
               amber,
             );
           }
+          if (side > 0) {
+            build.block(f, 46, -15.6, 57, 2.0, 30, floor);
+            for (const y of [27, 64]) {
+              build.beam(at(f, 76, y), at(f, 112, y), 1.5, metal);
+              build.beam(at(f, 76, y - 5), at(f, 112, y - 5), 1.2, metal);
+              for (let k = 0; k < 4; k++)
+                build.beam(
+                  at(f, 76 + k * 9, y - 5),
+                  at(f, 85 + k * 9, y),
+                  0.8,
+                  metal,
+                );
+            }
+          }
           // Cyan ladders provide human-readable scale against the monumental girders.
           for (const offset of [-1.7, 1.7])
             build.beam(
-              at(f, side * 41 + offset, -7, 9),
-              at(f, side * 41 + offset, 66, 9),
+              at(f, side * (side > 0 ? 87 : 41) + offset, -7, 9),
+              at(f, side * (side > 0 ? 87 : 41) + offset, 66, 9),
               0.28,
               cyan,
             );
           for (let y = -6; y <= 64; y += 2.8)
             build.beam(
-              at(f, side * 41 - 1.7, y, 9),
-              at(f, side * 41 + 1.7, y, 9),
+              at(f, side * (side > 0 ? 87 : 41) - 1.7, y, 9),
+              at(f, side * (side > 0 ? 87 : 41) + 1.7, y, 9),
               0.24,
               cyan,
             );
@@ -250,7 +338,7 @@ export class ArcadeArena {
   }
 
   rootPose(route) {
-    const t = Math.max(0.568, route + 0.018),
+    const t = Math.max(0.54, route + 0.018),
       frame = this.frameAt(t);
     const position = at(frame, 38, -10);
     const view = at(this.frameAt(route), 0, 4).sub(position);
@@ -290,13 +378,35 @@ export class ArcadeArena {
     const charge = smooth(
       (route - ARENA.chargeStart) / (ARENA.impact - ARENA.chargeStart),
     );
+    const stride = Math.max(0, route - 0.54) * Math.PI * 94;
+    const walking =
+      smooth((route - 0.54) / 0.004) * (1 - smooth((route - 0.578) / 0.008));
+    const crouch = Math.sin(Math.PI * smooth((route - 0.581) / 0.008));
+    const recoil = Math.max(
+      0,
+      ...BOSS_HITS.map((t) => {
+        const a = (route - t) / 0.0035;
+        return a > 0 && a < 1 ? Math.sin(a * Math.PI) * Math.exp(-a * 2) : 0;
+      }),
+    );
     parts.torso.rotation.set(
-      0,
-      0,
+      -recoil * 0.2 + crouch * 0.14,
+      recoil * 0.035,
       Math.sin(route * 240) * 0.025 * (1 - charge),
     );
+    parts.torso.position.y =
+      Math.abs(Math.sin(stride)) * 1.3 * walking - crouch * 3;
+    for (const [name, phase] of [
+      ["leftLeg", 0],
+      ["rightLeg", Math.PI],
+    ]) {
+      parts[name].rotation.x =
+        Math.sin(stride + phase) * 0.3 * walking - crouch * 0.24;
+      parts[name].position.y =
+        7 + Math.max(0, Math.sin(stride + phase)) * 2 * walking;
+    }
     parts.head.rotation.set(
-      0.04 * Math.sin(route * 180) * (1 - charge),
+      0.04 * Math.sin(route * 180) * (1 - charge) - recoil * 0.22,
       Math.sin(route * 140) * 0.065 * (1 - charge),
       0,
     );
@@ -348,7 +458,7 @@ export class ArcadeArena {
     });
     this.fragments = new THREE.InstancedMesh(
       box,
-      crystalMaterial(0.75),
+      crystalMaterial(0.24),
       this.debris.length,
     );
     this.fragments.frustumCulled = false;
@@ -378,7 +488,7 @@ export class ArcadeArena {
     });
     this.micro = new THREE.InstancedMesh(
       box,
-      crystalMaterial(0.55),
+      crystalMaterial(0.19),
       this.microData.length,
     );
     this.micro.frustumCulled = false;
@@ -389,6 +499,7 @@ export class ArcadeArena {
   }
 
   update({ route, time, duration, active }) {
+    this.buildBattle(duration);
     this.actors.visible =
       active && route > ARENA.start - 0.005 && route < ARENA.end + 0.012;
     const age = time - this.motion.progressAt(ARENA.impact) * duration;
@@ -398,10 +509,14 @@ export class ArcadeArena {
       smooth((route - 0.51) / 0.013) *
       (1 - smooth((route - 0.603) / 0.022));
     this.poseBoss(Math.min(route, ARENA.impact));
+    const hits = BOSS_HITS.filter((t) => route >= t).length;
+    this.damagePips.forEach((pip, i) => {
+      pip.material.color.set(i < hits ? "#24283a" : "#e88438");
+    });
     this.focusTarget
       .copy(this.boss.position)
       .addScaledVector(
-        this.frameAt(Math.max(0.568, Math.min(route, ARENA.impact) + 0.018))
+        this.frameAt(Math.max(0.54, Math.min(route, ARENA.impact) + 0.018))
           .normal,
         43,
       );
@@ -409,10 +524,10 @@ export class ArcadeArena {
     this.warmLight.position.copy(
       this.boss.localToWorld(new THREE.Vector3(0, 18, 22)),
     );
-    this.warmLight.intensity = this.actors.visible && age < 0 ? 350 : 0;
+    this.warmLight.intensity = this.actors.visible && age < 0 ? 130 : 0;
     this.fragments.visible = this.micro.visible = age >= 0 && age < 7;
     this.impactLight.intensity =
-      this.actors.visible && age >= 0 ? 1700 * Math.exp(-age * 2) : 0;
+      this.actors.visible && age >= 0 ? 420 * Math.exp(-age * 4) : 0;
     if (this.fragments.visible) {
       this.debris.forEach((cell, i) => {
         const life = Math.max(0, age - cell.delay);
@@ -422,7 +537,7 @@ export class ArcadeArena {
         dummy.rotateX(cell.spin.x * life);
         dummy.rotateY(cell.spin.y * life);
         dummy.rotateZ(cell.spin.z * life);
-        const fade = 1 - smooth((life - 3.8) / 2.5);
+        const fade = 1 - smooth((life - 1.7) / 1.8);
         // A tiny positive scale keeps GPU normals valid while hiding split cells.
         dummy.scale
           .copy(cell.scale)
@@ -447,7 +562,7 @@ export class ArcadeArena {
           .copy(cell.scale)
           .multiplyScalar(
             life > 0
-              ? Math.max(0.00001, 0.47 * (1 - smooth((life - 3) / 2.6)))
+              ? Math.max(0.00001, 0.47 * (1 - smooth((life - 1.5) / 1.6)))
               : 0.00001,
           );
         dummy.updateMatrix();
@@ -456,27 +571,78 @@ export class ArcadeArena {
       this.fragments.instanceMatrix.needsUpdate = true;
       this.micro.instanceMatrix.needsUpdate = true;
     }
-    this.projectiles.forEach(
-      ({ group, cue, origin, target, normal, baseFlight, light }) => {
-        const releaseTime = this.motion.progressAt(cue.release) * duration,
-          passTime = this.motion.progressAt(cue.pass) * duration;
-        const flight = (time - releaseTime) / (passTime - releaseTime);
-        group.visible = route >= cue.windup && flight < 1.65;
-        if (flight < 0) {
-          const hand =
-            this.boss.userData.parts[cue.side < 0 ? "leftHand" : "rightHand"];
-          group.position.copy(hand.localToWorld(new THREE.Vector3(0, 0, 10)));
-        } else
-          group.position
-            .lerpVectors(origin, target, flight)
-            .addScaledVector(
-              normal,
-              0.5 * 9.81 * baseFlight ** 2 * flight * (1 - flight),
-            );
-        group.rotation.set(flight * 8, flight * 3.2, flight * 1.4);
-        light.position.copy(group.position);
-        light.intensity = this.actors.visible && group.visible ? 380 : 0;
-      },
-    );
+    this.projectiles.forEach((p) => {
+      const { group, cue, origin, target, normal, baseFlight, light } = p;
+      const releaseTime = this.motion.progressAt(cue.release) * duration;
+      const passTime = this.motion.progressAt(cue.pass) * duration;
+      const flight = (time - releaseTime) / (passTime - releaseTime);
+      const age = time - p.destroyTime;
+      group.visible = route >= cue.windup && age < 0;
+      if (flight < 0) {
+        const hand =
+          this.boss.userData.parts[cue.side < 0 ? "leftHand" : "rightHand"];
+        group.position.copy(hand.localToWorld(new THREE.Vector3(0, 0, 10)));
+      } else group.position.copy(this.projectilePoint(p, flight));
+      group.rotation.set(flight * 8, flight * 3.2, flight * 1.4);
+      // Contact chips and a brief squash precede the final wooden pixel burst.
+      const flash = Math.max(
+        0,
+        ...p.hitTimes.map(
+          (t) => Math.max(0, 1 - (time - t) / 0.12) * (time >= t ? 1 : 0),
+        ),
+      );
+      group.scale.setScalar(1 + flash * 0.045);
+      light.position.copy(group.position);
+      light.intensity =
+        this.actors.visible && group.visible ? 55 + flash * 90 : 0;
+      p.debris.visible = age >= 0 && age < 2.2;
+      if (p.debris.visible) {
+        p.cells.forEach((c, i) => {
+          const v = c.position
+            .clone()
+            .normalize()
+            .multiplyScalar(7 + hash(i) * 12);
+          v.y += 4;
+          dummy.position
+            .copy(c.position)
+            .applyQuaternion(p.deathRotation)
+            .add(p.deathPoint)
+            .addScaledVector(v, age);
+          dummy.position.y -= 7.8 * age * age;
+          dummy.quaternion.copy(p.deathRotation);
+          dummy.rotateX(age * (hash(i + 2) * 5 - 2));
+          dummy.rotateY(age * 3);
+          dummy.scale
+            .copy(c.scale)
+            .multiplyScalar(Math.max(0.00001, 1 - smooth((age - 1) / 1.2)));
+          dummy.updateMatrix();
+          p.debris.setMatrixAt(i, dummy.matrix);
+        });
+        p.debris.instanceMatrix.needsUpdate = true;
+      }
+    });
+    let sparkIndex = 0;
+    for (const event of this.fireEvents) {
+      const age = time - event.hitTime;
+      if (age < 0 || age > 0.55) continue;
+      for (let i = 0; i < 20 && sparkIndex < 160; i++, sparkIndex++) {
+        const v = new THREE.Vector3(
+          hash(i + event.target * 50) * 2 - 1,
+          hash(i + 8) * 1.7,
+          hash(i + 9) * 2 - 1,
+        ).multiplyScalar(10 + hash(i + 5) * 9);
+        dummy.position.copy(event.point).addScaledVector(v, age);
+        dummy.position.y -= 9 * age * age;
+        dummy.rotation.set(age * 4, age * 3, 0);
+        dummy.scale.setScalar(
+          Math.max(0.00001, (i < 3 ? 0.75 : 0.38) * (1 - age / 0.55)),
+        );
+        dummy.updateMatrix();
+        this.hitSparks.setMatrixAt(sparkIndex, dummy.matrix);
+      }
+    }
+    this.hitSparks.count = sparkIndex;
+    this.hitSparks.visible = sparkIndex > 0;
+    this.hitSparks.instanceMatrix.needsUpdate = true;
   }
 }

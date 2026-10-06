@@ -6,6 +6,8 @@ import { createMotionProfile, flightPose } from "../src/motion.js";
 import { Trackside } from "../src/trackside.js";
 import { ArcadeCombat, combatEvents } from "../src/combat.js";
 import { BOOSTS, JUMPS } from "../src/story.js";
+import { Stagecraft } from "../src/stagecraft.js";
+import { DEFAULT_DURATION } from "../src/ride.js";
 
 const world = Object.create(VoxelWorld.prototype);
 world.curve = new THREE.CatmullRomCurve3(
@@ -56,7 +58,7 @@ test("visible boost pads produce measurable speed gain, even on climbing section
 });
 
 test("airborne arcs bridge real rail gaps continuously and land with suspension rebound", () => {
-  for (const duration of [150, 240])
+  for (const duration of [DEFAULT_DURATION, 150, 240])
     for (const jump of JUMPS) {
       const start = motion.progressAt(jump.start) * duration,
         end = motion.progressAt(jump.end) * duration;
@@ -81,6 +83,42 @@ test("airborne arcs bridge real rail gaps continuously and land with suspension 
       assert.ok(poseAt(end + 0.08).landing > 0.4);
       assert.equal(poseAt(end + 1).landing, 0);
     }
+});
+
+test("chapter marquees clear the airborne camera path", () => {
+  const stage = new Stagecraft(new THREE.Scene(), frameAt);
+  stage.root.updateMatrixWorld(true);
+  const bounds = [];
+  stage.root.traverse((mesh) => {
+    if (!mesh.isMesh) return;
+    mesh.geometry.computeBoundingBox();
+    bounds.push({
+      inverse: mesh.matrixWorld.clone().invert(),
+      box: mesh.geometry.boundingBox.clone().expandByScalar(1.5),
+    });
+  });
+  for (let i = 0; i <= 2200; i++) {
+    const route = i / 2200;
+    const p = flightPose(
+      route,
+      motion.progressAt(route) * DEFAULT_DURATION,
+      DEFAULT_DURATION,
+      motion,
+      frameAt,
+    ).position;
+    for (const { inverse, box } of bounds)
+      assert.equal(
+        box.containsPoint(p.clone().applyMatrix4(inverse)),
+        false,
+        `Marquee clips camera at ${route}`,
+      );
+  }
+});
+
+test("opening threat arrives before the first drop in the default film", () => {
+  const first = combatEvents(motion, DEFAULT_DURATION)[0];
+  assert.ok(first.spawnTime > 9 && first.spawnTime < 13);
+  assert.ok(first.killTime < motion.progressAt(0.166) * DEFAULT_DURATION);
 });
 
 test("combat kills persist, replay exactly after seeks, and never create singular fragments", () => {

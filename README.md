@@ -4,7 +4,7 @@ A first-person, automatic rollercoaster through a luminous voxel universe. A mus
 
 **[Enter the ride](https://kelseywynns.github.io/rollercoaster/)**
 
-The visual direction combines cinematic arcade nostalgia with original procedural scenery: floating gardens, pink voxel trees, falling water, pixel creatures, a pixel crescent moon, stars, subtle aurora, and illuminated rails. A deep midnight sky and saturated magenta, cobalt, emerald and amber scenery keep the luminous characters readable. All artwork is generated in code; there are no downloaded game or movie assets.
+A midnight arcade world with saturated voxel characters, polished pixel edges, cobalt maze walls, marching invaders, red steel girders and wooden barrels. Character silhouettes follow their classic arcade counterparts: Pac-Man, ghosts, Space Invaders, Galaga-inspired fighters, Centipede and Donkey Kong. All models and scenery are generated in code; no game or movie assets are downloaded or bundled.
 
 ## Run locally
 
@@ -19,26 +19,20 @@ Open the localhost URL printed by Vite. `npm run build` produces a static site i
 
 ## The experience
 
-The built-in ride lasts 2:30 and progresses through four acts:
+The built-in ride lasts **1:50**, with a short anticipation beat followed by four stages:
 
-1. **The awakening** — a slow departure through floating gardens with a curious pixel companion.
-2. **Neon ascent** — an accelerating chain-lift climb, cool crystalline colors, and a sentinel appearing at the crest.
-3. **Pixel freefall** — gravity-driven drops, a firing sentinel, and a sentinel smashing into a tunnel pillar, bursting into its individual cubes.
-4. **Hyperdrive** — a towering arcade arena, a leaping voxel titan, a cloud of falling pixels, attacking drones, and induction boosters, reciprocal laser battles, and broken-rail jumps.
+1. **Maze runner** — Pac-Man, power-pellet lanes and pursuing ghosts. The first threat arrives around 11 seconds.
+2. **Invader drop** — the first major gravity drop around 21 seconds, marching Space Invaders, green bunkers, a crashing ghost and a neon tunnel.
+3. **Barrel trouble** — Donkey Kong winds up and throws three wooden, iron-banded barrels in a red-girder arena. The car shoots each barrel three times, breaking it into its actual wooden pixels, and lands ten hits on Kong. Damage pips, contact chips, recoil, a crouched push-off and the final charge connect the attack to its outcome. Kong collides with an overhead beam and progressively fractures into thousands of cubes and shards.
+4. **High score** — diving fighters, faster reciprocal fire, boosters, airborne gaps and a celebratory stage-clear gate. The film ends on the completed score and artist credit.
 
-Motion is integrated from gravitational potential energy, drag, lift speed, and late-ride boosters. Descents gain speed and subsequent climbs lose it. The opening spends roughly the first 37 seconds building anticipation before the first large drop. The coaster automatically fights back; no controls or gameplay are required.
+Motion integrates gravity, drag, chain-lift speed and boosters. Descents accelerate and climbs shed speed. Five visible induction strips provide real acceleration. Three gaps have raised launch ramps, ballistic flight, landing compression and rebound. Speed changes the field of view and peripheral streaks; gentle motion reduces bank, cockpit jolt, shield flashes and blur.
 
-The amber scout, ruby sentinel and emerald drake are sculpted from smaller surface voxels, with projecting faces and glowing seams. Their glass-like materials preserve individual cube edges and a faint internal grid.
+Continuous kerbs and reflective studs line **both sides of the entire route**, including airborne sections. Cobalt maze walls, stepped invader bunkers, red arcade steel and late-stage hangars give each section its own near-field scenery and readable sense of speed. Distant floating islands, a pixel moon and subtle aurora add depth.
 
-After the second tunnel (about 1:30), the **Prism Warden** appears in an arena of stacked red girders and cyan ladders. Its 8,821 surface cubes form an articulated body, hands, face and horns. Three plasma drums follow parabolic paths past the car and cast orange light onto polished platforms. The creature then leaps into a fixed overhead beam and progressively fractures into more than 24,000 cubes and smaller shards as the coaster passes underneath. A gentle camera cue frames the action.
+Six combat waves contain **28 targets** with distinct ghost pursuit, invader marching and fighter dive patterns. Twin cockpit cannons fire bursts with visible contact and colored voxel destruction. Enemy counterfire brushes the cockpit shield. The arena uses the same firing system for barrel interceptions and Kong hits; its guns hold their aim between volleys. Three enclosed tunnels alternate with open-air action.
 
-Continuous kerbs and reflective studs line **both sides of the complete route**, including airborne sections. Close blossom gardens, irregular glossy voxel geodes, arcade towers and pixel sigils add depth against the more distant islands. Geometry is instanced in four batches. Peripheral shutter streaks increase with speed while keeping the center of the image readable.
-
-Five lime induction strips precede actual acceleration. Three missing track sections use raised launch ramps with matching upward velocity, ballistic flight, and landing compression/rebound. Gravity, banking and speed-dependent field of view are exaggerated. Gentle motion reduces banking, cockpit jolt, shield flashes and blur.
-
-Five combat waves contain **24 targets with three silhouettes**. Twin cockpit cannons automatically fire four-shot bursts; cyan bolts connect to targets, impacts flash, and enemies disintegrate into colored voxel debris with a +100 confirmation. Magenta counterfire brushes the cockpit shield. Launch, landing, lasers and destruction have soft sound cues shared by live playback and export.
-
-Three enclosed, faceted tunnels punctuate the route with alternating neon ribs. Enemy pixels have beveled edges, glossy reflections and emissive cores; the collision uses the sentinel’s actual colored cubes and a fixed obstacle. Encounters and effects follow route positions, so they stay synchronized when the soundtrack changes length.
+The ride is automatic: no gameplay controls are required. Route-based cues keep encounters synchronized when the soundtrack duration changes. The HUD fades after departure, and a single control brings it back.
 
 Select a chapter on the opening screen to preview that section. Once aboard, drag to look around, scrub the timeline, or hide the controls.
 
@@ -75,10 +69,11 @@ When running locally with Vite, films are automatically saved to `renders/`, whi
 - `src/world.js` — deterministic voxel scenery, spline track, camera, lighting, bloom.
 - `src/ride.js` — playback state, timing, and chapter metadata.
 - `src/motion.js` — integrated gravity, drag, chain lifts, and boosters.
-- `src/sculpt.js` — volumetric surface-voxel characters and articulated titan.
+- `src/sculpt.js` — recognizable surface-voxel arcade characters, articulated Kong and wooden barrels.
 - `src/arena.js` — arcade architecture, physical near misses, light spill and progressive fracture.
-- `src/trackside.js` — continuous near scenery, crystal clusters, booster pads and landing markers.
+- `src/trackside.js` — themed near scenery, booster pads and landing markers.
 - `src/combat.js` — automatic twin cannons, enemy waves, retaliation and deterministic destruction.
+- `src/stagecraft.js` — in-world chapter marquees, stage-clear score and celebration.
 - `src/rush-pass.js` — restrained peripheral speed streaks, without frame history.
 - `src/encounters.js` — scripted pixel characters, pursuit, projectiles, and bursts.
 - `src/story.js` — shared route markers for collision, tunnels and sound.
@@ -90,7 +85,7 @@ When running locally with Vite, films are automatically saved to `renders/`, whi
 - `src/audio.js` — local audio playback, analyser, generated demo soundtrack.
 - `src/main.js` — interface and playback coordination.
 - `src/style.css` — responsive interface.
-- `tests/` — playback timing, progression, and camera/scenery clearance, thrown-object clearance, impact contact and valid debris transforms.
+- `tests/` — playback timing, progression, and camera/scenery clearance, projectile interceptions, marquee clearance, impact contact and valid debris transforms.
 
 `npm test` runs the Node test suite. Scenery uses instanced meshes to keep draw calls low. Cinematic quality includes bloom; performance quality lowers rendering resolution and disables it. WebGL2 is required.
 

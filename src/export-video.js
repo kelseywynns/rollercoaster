@@ -1,4 +1,5 @@
 import { synthesizeEffects, mixChannels } from "./effects-audio.js";
+import { FINAL_SCORE } from "./stagecraft.js";
 import { CRASH, ARENA } from "./story.js";
 import {
   AudioBufferSource,
@@ -237,6 +238,26 @@ export async function renderVideo({
           context.fillStyle = `rgba(10,13,27,${Math.min(1, fade)})`;
           context.fillRect(0, 0, width, height);
         }
+      }
+      if (!preview && timestamp > duration - 2.5) {
+        const alpha = Math.min(1, (timestamp - duration + 2.5) / 0.55);
+        context.save();
+        context.globalAlpha = alpha;
+        context.textAlign = "center";
+        context.fillStyle = "#dfad56";
+        context.font = `600 ${Math.round(height * 0.024)}px monospace`;
+        context.fillText(
+          "STAGE CLEAR  /  " + FINAL_SCORE.toLocaleString("en-US"),
+          width / 2,
+          height * 0.39,
+        );
+        context.fillStyle = "#ecf1f5";
+        context.font = `900 ${Math.round(height * 0.074)}px monospace`;
+        context.fillText("PIXELRUSH", width / 2, height * 0.5);
+        context.fillStyle = "#8295ab";
+        context.font = `500 ${Math.round(height * 0.018)}px monospace`;
+        context.fillText("K E L S E Y   W Y N N S", width / 2, height * 0.56);
+        context.restore();
       }
       await video.add(timestamp, 1 / fps);
       if (frame % 30 === 0) {

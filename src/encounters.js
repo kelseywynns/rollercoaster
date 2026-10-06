@@ -112,15 +112,15 @@ export class Encounters {
         segment,
         [0, 0, 0],
         [2.3 - i * 0.11, 2.1 - i * 0.1, 2.7],
-        i % 2 ? "#00cda1" : "#00f79c",
+        i % 2 ? "#638632" : "#a4b827",
         0.68,
         0.4,
       );
       voxelEllipsoid(
         segment,
-        [0, 2.6 - i * 0.09, 0],
-        [0.6, 1.9 - i * 0.08, 1.2],
-        "#ff00a8",
+        [2.6 - i * 0.09, -1.9, 0],
+        [1.4, 0.45, 0.6],
+        "#b93154",
         0.5,
         0.6,
       );
@@ -211,9 +211,12 @@ export class Encounters {
     const hello = windowEnvelope(route, 0.015, 0.13, 0.018);
     this.companion.visible = hello > 0;
     this.companion.position.copy(
-      place(24, 11 + (1 - hello) * 45, 11 + Math.sin(time * 1.2) * 1.5),
+      place(26, 5 + (1 - hello) * 35, 8 + Math.sin(time * 1.2) * 1.2),
     );
     face(this.companion);
+    this.companion.userData.frames.forEach(
+      (g, i) => (g.visible = i === Math.floor(time * 5) % 2),
+    );
     this.companion.rotation.z += Math.sin(time * 2) * 0.12;
 
     // The sentinel dives into the fixed right-hand tunnel pillar, then truly fractures.

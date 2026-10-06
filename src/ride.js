@@ -1,33 +1,33 @@
-export const DEFAULT_DURATION = 150;
+export const DEFAULT_DURATION = 110;
 
 export const CHAPTERS = [
   {
-    name: "The awakening",
-    tag: "DRIFT INTO THE DREAM",
-    description: "Floating gardens. Endless possibility.",
+    name: "Maze runner",
+    tag: "FOLLOW THE POWER PELLETS",
+    description: "Pac-Man leads the way.",
     color: "#9be4ce",
     start: 0,
   },
   {
-    name: "Neon ascent",
-    tag: "A LITTLE CLOSER TO THE STARS",
-    description: "Climb above a world of electric color.",
+    name: "Invader drop",
+    tag: "THEY CAME FROM THE ARCADE",
+    description: "A formation breaks. The rails fall away.",
     color: "#d2a7ff",
-    start: 0.1,
+    start: 0.2,
   },
   {
-    name: "Pixel freefall",
-    tag: "LET EVERYTHING GO",
-    description: "The horizon falls away. You follow.",
+    name: "Barrel trouble",
+    tag: "DONKEY KONG IS WAITING",
+    description: "Shoot the barrels. Hold your nerve.",
     color: "#ffab80",
-    start: 0.26,
+    start: 0.53,
   },
   {
-    name: "Hyperdrive",
-    tag: "BECOME THE FREQUENCY",
-    description: "One last rush into the infinite.",
+    name: "High score",
+    tag: "ONE LAST CREDIT",
+    description: "Break formation. Chase the light.",
     color: "#ff789f",
-    start: 0.7,
+    start: 0.76,
   },
 ];
 

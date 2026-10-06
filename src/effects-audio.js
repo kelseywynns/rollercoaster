@@ -2,13 +2,15 @@ import {
   CRASH,
   TUNNELS,
   ARENA,
+  BOSS_HITS,
+  BARREL_HIT_FRACTIONS,
   BOOSTS,
   JUMPS,
   tunnelCoverage,
   smooth,
 } from "./story.js";
 
-import { combatEvents, shotOffsets, shotFlight } from "./combat.js";
+import { combatEvents, shotOffsetsFor, shotFlight } from "./combat.js";
 
 export function effectCues(duration, motion) {
   const at = (route) => motion.progressAt(route) * duration;
@@ -20,6 +22,21 @@ export function effectCues(duration, motion) {
     cues.push({ type: "whoosh", time: at(shot.release), length: 1.1 });
     cues.push({ type: "drum", time: at(shot.pass) - 0.45, length: 1.2 });
   }
+  for (const route of BOSS_HITS) {
+    cues.push({ type: "return", time: at(route) - shotFlight, length: 0.13 });
+    cues.push({ type: "land", time: at(route), length: 0.22 });
+  }
+  for (const barrel of ARENA.throws)
+    for (const [i, f] of BARREL_HIT_FRACTIONS.entries()) {
+      const hit =
+        at(barrel.release) + (at(barrel.pass) - at(barrel.release)) * f;
+      cues.push({ type: "return", time: hit - shotFlight, length: 0.13 });
+      cues.push({
+        type: i === 2 ? "shatter" : "tick",
+        time: hit,
+        length: i === 2 ? 0.55 : 0.12,
+      });
+    }
   for (const tunnel of TUNNELS) {
     cues.push({ type: "whoosh", time: at(tunnel.start) - 0.35, length: 1.25 });
     cues.push({ type: "whoosh", time: at(tunnel.end) - 0.15, length: 0.85 });
@@ -41,7 +58,7 @@ export function effectCues(duration, motion) {
     cues.push({ type: "land", time: at(jump.end), length: 0.7 });
   }
   for (const enemy of combatEvents(motion, duration)) {
-    for (const offset of shotOffsets)
+    for (const offset of shotOffsetsFor(enemy))
       cues.push({
         type: "return",
         time: enemy.killTime + offset - shotFlight,
@@ -176,6 +193,22 @@ export function synthesizeEffects(duration, motion, sampleRate = 48000) {
       right[start + j] += value * Math.sqrt((1 + pan) / 2) * fade;
     }
   });
+  let sum = 0,
+    peak = 0;
+  for (let i = 0; i < count; i++) {
+    sum += left[i] * left[i] + right[i] * right[i];
+    peak = Math.max(peak, Math.abs(left[i]), Math.abs(right[i]));
+  }
+  const gain = Math.min(
+    1,
+    0.034 / Math.max(0.0001, Math.sqrt(sum / (count * 2))),
+    0.42 / Math.max(0.0001, peak),
+  );
+  if (gain < 1)
+    for (let i = 0; i < count; i++) {
+      left[i] *= gain;
+      right[i] *= gain;
+    }
   return { channels: [left, right], sampleRate, cues };
 }
 
