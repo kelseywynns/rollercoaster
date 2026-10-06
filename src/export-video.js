@@ -1,3 +1,5 @@
+import { synthesizeEffects, mixChannels } from "./effects-audio.js";
+import { CRASH } from "./story.js";
 import {
   AudioBufferSource,
   BufferTarget,
@@ -70,6 +72,8 @@ export async function renderVideo({
   world,
   duration,
   file,
+  volume = 0.5,
+  effectsVolume = 0.35,
   width = 1920,
   height = 1080,
   fps = 60,
@@ -93,9 +97,30 @@ export async function renderVideo({
     const decoder = new OfflineAudioContext(2, 48000, 48000);
     audio = await decoder.decodeAudioData(await file.arrayBuffer());
   } else audio = await makeDemoAudio(duration);
+  const effects = synthesizeEffects(duration, world.motion, audio.sampleRate);
+  const music = Array.from({ length: audio.numberOfChannels }, (_, c) =>
+    audio.getChannelData(c),
+  );
+  const mixed = mixChannels(music, effects.channels, {
+    musicGain: file ? volume : volume / 0.5,
+    effectsGain: effectsVolume * volume,
+  });
+  audio = new AudioBuffer({
+    length: mixed[0].length,
+    sampleRate: audio.sampleRate,
+    numberOfChannels: 2,
+  });
+  mixed.forEach((channel, c) => audio.copyToChannel(channel, c));
   if (signal.aborted) throw new DOMException("Render cancelled", "AbortError");
 
-  const renderDuration = preview ? 12 : duration;
+  const renderDuration = preview ? Math.min(12, duration) : duration;
+  const previewStart = Math.max(
+    0,
+    Math.min(
+      duration - renderDuration,
+      world.motion.progressAt(CRASH.cameraT) * duration - 4,
+    ),
+  );
   const target = new BufferTarget();
   const output = new Output({
     format: new Mp4OutputFormat({ fastStart: "in-memory" }),
@@ -153,8 +178,8 @@ export async function renderVideo({
           audio
             .getChannelData(c)
             .subarray(
-              Math.floor(duration * 0.48 * audio.sampleRate),
-              Math.floor(duration * 0.48 * audio.sampleRate) + clip.length,
+              Math.floor(previewStart * audio.sampleRate),
+              Math.floor(previewStart * audio.sampleRate) + clip.length,
             ),
           c,
         );
@@ -165,7 +190,7 @@ export async function renderVideo({
       if (signal.aborted)
         throw new DOMException("Render cancelled", "AbortError");
       const timestamp = frame / fps,
-        storyTime = preview ? duration * 0.48 + timestamp : timestamp;
+        storyTime = preview ? previewStart + timestamp : timestamp;
       const offset = Math.floor(storyTime * audio.sampleRate);
       let squareSum = 0;
       for (let i = 0; i < 1024; i++)

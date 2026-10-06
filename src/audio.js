@@ -1,8 +1,10 @@
+import { synthesizeEffects } from "./effects-audio.js";
 const midi = (note) => 440 * 2 ** ((note - 69) / 12);
 
 export class Soundtrack {
   constructor() {
     this.volume = 0.5;
+    this.effectsVolume = 0.35;
     this.muted = false;
     this.file = null;
     this.url = null;
@@ -20,6 +22,9 @@ export class Soundtrack {
       this.analyser = this.context.createAnalyser();
       this.analyser.fftSize = 256;
       this.data = new Uint8Array(this.analyser.frequencyBinCount);
+      this.effectsGain = this.context.createGain();
+      this.effectsGain.gain.value = this.effectsVolume;
+      this.effectsGain.connect(this.master);
       this.master.connect(this.analyser);
       this.analyser.connect(this.context.destination);
       this.mediaSource = this.context.createMediaElementSource(this.element);
@@ -78,9 +83,54 @@ export class Soundtrack {
     if (this.url) URL.revokeObjectURL(this.url);
     this.url = null;
   }
-  async play(elapsed = 0) {
+  configureEffects(motion) {
+    this.motion = motion;
+  }
+  startEffects(elapsed) {
+    this.stopEffects();
+    if (!this.motion || !this.context) return;
+    if (this.effectsDuration !== this.duration) {
+      const score = synthesizeEffects(
+        this.duration,
+        this.motion,
+        this.context.sampleRate,
+      );
+      this.effectsBuffer = this.context.createBuffer(
+        2,
+        score.channels[0].length,
+        score.sampleRate,
+      );
+      score.channels.forEach((data, c) =>
+        this.effectsBuffer.copyToChannel(data, c),
+      );
+      this.effectsDuration = this.duration;
+    }
+    if (elapsed >= this.effectsBuffer.duration) return;
+    this.effectsSource = this.context.createBufferSource();
+    this.effectsSource.buffer = this.effectsBuffer;
+    this.effectsSource.connect(this.effectsGain);
+    this.effectsSource.start(0, Math.max(0, elapsed));
+  }
+  stopEffects() {
+    if (this.effectsSource) {
+      this.effectsSource.stop();
+      this.effectsSource.disconnect();
+      this.effectsSource = null;
+    }
+  }
+  setEffectsVolume(value) {
+    this.effectsVolume = value;
+    this.effectsGain?.gain.setTargetAtTime(
+      value,
+      this.context.currentTime,
+      0.04,
+    );
+  }
+  async play(elapsed = 0, duration = 150) {
     await this.init();
+    this.duration = duration;
     this.active = true;
+    this.startEffects(elapsed);
     this.lastBeat = Math.floor(elapsed * 2.6667) - 1;
     if (this.file) {
       this.element.currentTime = elapsed;
@@ -89,6 +139,7 @@ export class Soundtrack {
   }
   pause() {
     this.active = false;
+    this.stopEffects();
     this.element.pause();
     if (this.context?.state === "running") this.context.suspend();
   }
@@ -100,6 +151,7 @@ export class Soundtrack {
   seek(seconds) {
     if (this.file) this.element.currentTime = seconds;
     this.lastBeat = Math.floor(seconds * 2.6667) - 1;
+    if (this.active) this.startEffects(seconds);
   }
   setVolume(value) {
     this.volume = value;

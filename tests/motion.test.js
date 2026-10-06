@@ -16,14 +16,15 @@ const motion = createMotionProfile(curve);
 
 test("the ride begins slowly and reserves the first major drop for the build-up", () => {
   assert.ok(motion.sample(0).speed < 4);
-  assert.ok(motion.sample(0.25).t < 0.1);
-  assert.ok(motion.sample(0.4).height > 130);
+  const firstCrestTime = motion.progressAt(0.166) * 150;
+  assert.ok(firstCrestTime > 30 && firstCrestTime < 45);
+  assert.ok(motion.sample(motion.progressAt(0.155)).height > 140);
 });
 
 test("gravity accelerates the descent and reduces speed on the following climb", () => {
-  const crest = motion.sample(0.4),
-    descent = motion.sample(0.5),
-    nextHill = motion.sample(0.6);
+  const crest = motion.sample(motion.progressAt(0.166)),
+    descent = motion.sample(motion.progressAt(0.234)),
+    nextHill = motion.sample(motion.progressAt(0.34));
   assert.ok(descent.height < crest.height - 50);
   assert.ok(descent.speed > crest.speed * 2);
   assert.ok(nextHill.height > descent.height + 50);
@@ -44,4 +45,10 @@ test("motion is deterministic, continuous and reaches the end for any soundtrack
     motion.sample(0.5, 360).speed,
     motion.sample(0.5, 180).speed / 2,
   );
+});
+
+test("inverse route lookup keeps collision cues aligned at any duration", () => {
+  for (const t of [0, 0.166, 0.222, 0.234, 0.51, 0.82, 1]) {
+    assert.ok(Math.abs(motion.sample(motion.progressAt(t), 247).t - t) < 1e-8);
+  }
 });

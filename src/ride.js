@@ -1,4 +1,4 @@
-export const DEFAULT_DURATION = 180;
+export const DEFAULT_DURATION = 150;
 
 export const CHAPTERS = [
   {
@@ -13,21 +13,21 @@ export const CHAPTERS = [
     tag: "A LITTLE CLOSER TO THE STARS",
     description: "Climb above a world of electric color.",
     color: "#d2a7ff",
-    start: 0.25,
+    start: 0.1,
   },
   {
     name: "Pixel freefall",
     tag: "LET EVERYTHING GO",
     description: "The horizon falls away. You follow.",
     color: "#ffab80",
-    start: 0.5,
+    start: 0.26,
   },
   {
     name: "Hyperdrive",
     tag: "BECOME THE FREQUENCY",
     description: "One last rush into the infinite.",
     color: "#ff789f",
-    start: 0.75,
+    start: 0.7,
   },
 ];
 
@@ -35,7 +35,7 @@ export function clamp(value, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
 }
 export function chapterIndex(progress) {
-  return Math.min(3, Math.floor(clamp(progress) * 4));
+  return CHAPTERS.findLastIndex((chapter) => clamp(progress) >= chapter.start);
 }
 export function formatTime(seconds) {
   const s = Math.max(0, Math.floor(seconds));

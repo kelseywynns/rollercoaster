@@ -5,6 +5,10 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { clamp } from "./ride.js";
 import { createMotionProfile } from "./motion.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { pixelMaterial, setPixelEnvironment } from "./materials.js";
+import { buildTunnels } from "./tunnels.js";
+import { tunnelCoverage } from "./story.js";
 import { Encounters } from "./encounters.js";
 
 const up = new THREE.Vector3(0, 1, 0);
@@ -132,13 +136,23 @@ export class VoxelWorld {
     this.floaters = [];
     this.makeSky();
     this.makeLighting();
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    const studio = new RoomEnvironment();
+    this.environment = pmrem.fromScene(studio, 0.04);
+    setPixelEnvironment(this.environment.texture);
+    studio.dispose();
+    pmrem.dispose();
     this.makeWorld();
     this.makeTrack();
+    buildTunnels(this.scene, (t) => this.frameAt(t), this.length);
     this.makeCreatures();
     this.makeParticles();
     this.solids.build();
     this.glowMesh = this.glows.build();
-    this.encounters = new Encounters(this.scene);
+    this.encounters = new Encounters(this.scene, {
+      frameAt: (t) => this.frameAt(t),
+      motion: this.motion,
+    });
     this.makeCar();
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
@@ -167,6 +181,9 @@ export class VoxelWorld {
     this.scene.add(this.camera);
     this.car = new THREE.Group();
     this.camera.add(this.car);
+    this.headlight = new THREE.PointLight("#74dfff", 180, 45, 2);
+    this.headlight.position.set(0, 3, -10);
+    this.camera.add(this.headlight);
     const navy = new THREE.MeshStandardMaterial({
       color: "#172e43",
       roughness: 0.4,
@@ -652,7 +669,10 @@ export class VoxelWorld {
             color,
           );
         }
-      batch.build();
+      const pixels = batch.build();
+      pixels.material.dispose();
+      pixels.material = pixelMaterial(color, 0.8);
+      pixels.material.color.set("#ffffff");
       group.position.set(x, y, z);
       group.rotation.y = -0.15;
       this.scene.add(group);
@@ -736,7 +756,7 @@ export class VoxelWorld {
     energy = 0,
     gentle = false,
     delta = 0.016,
-    duration = 180,
+    duration = 150,
   }) {
     this.energy += (energy - this.energy) * Math.min(1, delta * 5);
     const calm = gentle || this.reducedMotion;
@@ -790,13 +810,21 @@ export class VoxelWorld {
       frame: this.frameAt(motion.t),
       active: mode !== "idle",
       calm,
+      route: motion.t,
+      duration,
     });
     if (!calm)
       this.floaters.forEach(({ group, y, phase }) => {
         group.position.y = y + Math.sin(time * 0.8 + phase) * 3.5;
         group.rotation.y = -0.15 + Math.sin(time * 0.35 + phase) * 0.1;
       });
-    this.bloom.strength = 0.3 + this.energy * 0.14;
+    const inside = mode === "idle" ? 0 : tunnelCoverage(motion.t);
+    this.scene.fog.color
+      .set("#b386b5")
+      .lerp(new THREE.Color("#172246"), inside);
+    this.scene.fog.density = 0.0009 + inside * 0.002;
+    this.headlight.visible = mode !== "idle";
+    this.bloom.strength = 0.52 + this.energy * 0.15;
     this.composer.render();
   }
 }

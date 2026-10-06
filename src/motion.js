@@ -8,7 +8,7 @@ export function createMotionProfile(curve, samples = 3600) {
   const times = new Float64Array(samples + 1);
   const speeds = new Float64Array(samples + 1);
   const heights = new Float64Array(samples + 1);
-  let speed = 2.5,
+  let speed = 3.2,
     elapsed = 0;
   speeds[0] = speed;
   heights[0] = curve.getPointAt(0).y;
@@ -18,9 +18,10 @@ export function createMotionProfile(curve, samples = 3600) {
     const previousSpeed = speed,
       dh = heights[i] - heights[i - 1];
     if (t < 0.012) {
-      speed = 2.5 + 6.5 * Math.sin(((t / 0.012) * Math.PI) / 2);
+      speed = 3.2 + 15.8 * Math.sin(((t / 0.012) * Math.PI) / 2);
     } else if (t < 0.166) {
-      speed = 10.5 + (1.5 * t) / 0.166;
+      const crest = clamp((t - 0.135) / 0.031);
+      speed = (19 + (9 * t) / 0.166) * (1 - 0.45 * crest * crest);
     } else {
       const boost = t > 0.66 ? 4.8 : 0.75;
       const drag = 0.00065 * speed * speed;
@@ -42,7 +43,12 @@ export function createMotionProfile(curve, samples = 3600) {
   return {
     naturalDuration,
     length,
-    sample(progress, duration = 180) {
+    progressAt(t) {
+      const index = clamp(t) * samples;
+      const lo = Math.min(samples - 1, Math.floor(index));
+      return times[lo] + (times[lo + 1] - times[lo]) * (index - lo);
+    },
+    sample(progress, duration = 150) {
       const p = clamp(progress);
       let lo = 0,
         hi = samples;

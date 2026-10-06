@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import { clamp } from "./ride.js";
+import { pixelGeometry, pixelMaterial } from "./materials.js";
+import { CRASH, tunnelCoverage } from "./story.js";
 
 const box = new THREE.BoxGeometry(1, 1, 1);
 const dummy = new THREE.Object3D();
@@ -18,35 +20,42 @@ function sprite(pattern, palette, size = 1) {
     [...row].forEach((cell, x) => {
       if (cell !== ".")
         cells.push({
-          x: (x - row.length / 2) * size,
-          y: (pattern.length / 2 - y) * size,
+          position: new THREE.Vector3(
+            (x - (row.length - 1) / 2) * size,
+            ((pattern.length - 1) / 2 - y) * size,
+            cell === "E" ? size * 1.1 : 0,
+          ),
+          scale: new THREE.Vector3(
+            size * 0.93,
+            size * 0.93,
+            size * (cell === "E" ? 0.6 : 2),
+          ),
+          color: palette[cell] || palette.X,
           cell,
         });
     }),
   );
-  const mesh = new THREE.InstancedMesh(
-    box,
-    new THREE.MeshStandardMaterial({
-      roughness: 0.55,
-      metalness: 0.12,
-      emissive: "#30152c",
-      emissiveIntensity: 0.35,
-    }),
-    cells.length,
-  );
-  cells.forEach((cell, i) => {
-    dummy.position.set(cell.x, cell.y, cell.cell === "E" ? size * 1.1 : 0);
-    dummy.scale.set(
-      size * 0.94,
-      size * 0.94,
-      size * (cell.cell === "E" ? 0.6 : 2),
+  for (const key of Object.keys(palette)) {
+    const matching = cells.filter((c) => c.cell === key);
+    const material = pixelMaterial(
+      palette[key],
+      key === "E" ? 1.65 : key === "K" ? 0.1 : 0.85,
     );
-    dummy.rotation.set(0, 0, 0);
-    dummy.updateMatrix();
-    mesh.setMatrixAt(i, dummy.matrix);
-    mesh.setColorAt(i, color.set(palette[cell.cell] || palette.X));
-  });
-  group.add(mesh);
+    const mesh = new THREE.InstancedMesh(
+      pixelGeometry,
+      material,
+      matching.length,
+    );
+    matching.forEach((cell, i) => {
+      dummy.position.copy(cell.position);
+      dummy.scale.copy(cell.scale);
+      dummy.rotation.set(0, 0, 0);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    });
+    group.add(mesh);
+  }
+  group.userData.cells = cells;
   return group;
 }
 
@@ -76,13 +85,28 @@ const wingPattern = [
 ];
 
 export class Encounters {
-  constructor(scene) {
+  constructor(scene, { frameAt, motion }) {
+    this.frameAt = frameAt;
+    this.motion = motion;
+    const portal = frameAt(CRASH.targetT);
+    this.impact = portal.point
+      .clone()
+      .addScaledVector(portal.right, CRASH.side)
+      .addScaledVector(portal.normal, CRASH.height);
+    const crashCamera = frameAt(CRASH.cameraT);
+    const pose = new THREE.Object3D();
+    pose.position.copy(this.impact);
+    pose.lookAt(
+      crashCamera.point.clone().addScaledVector(crashCamera.normal, 3.8),
+    );
+    pose.rotateZ(-0.32);
+    this.crashRotation = pose.quaternion.clone();
     this.scene = scene;
     this.root = new THREE.Group();
     scene.add(this.root);
     this.sentinel = sprite(
       sentinelPattern,
-      { X: "#ff526e", E: "#aaffef", K: "#451b50" },
+      { X: "#ff2459", E: "#aaffef", K: "#451b50" },
       1.45,
     );
     this.root.add(this.sentinel);
@@ -109,10 +133,7 @@ export class Encounters {
       const segment = new THREE.Group();
       const body = new THREE.Mesh(
         new THREE.BoxGeometry(3.6 - i * 0.16, 3.3 - i * 0.13, 4.5),
-        new THREE.MeshStandardMaterial({
-          color: i % 2 ? "#53dabd" : "#82f7c9",
-          roughness: 0.6,
-        }),
+        pixelMaterial(i % 2 ? "#53dabd" : "#82f7c9", 0.65),
       );
       const fin = new THREE.Mesh(
         new THREE.BoxGeometry(0.7, 3.7 - i * 0.14, 1.8),
@@ -151,19 +172,48 @@ export class Encounters {
       this.root.add(group);
       return group;
     });
+    this.fragments = this.sentinel.userData.cells.map((cell, i) => {
+      const angle = i * 2.39996;
+      return {
+        ...cell,
+        origin: cell.position
+          .clone()
+          .applyQuaternion(this.crashRotation)
+          .add(this.impact),
+        velocity: new THREE.Vector3(
+          Math.cos(angle) * (6 + (i % 9)),
+          4 + (i % 11) * 0.9,
+          Math.sin(angle) * (7 + (i % 8)),
+        ),
+      };
+    });
     this.burst = new THREE.InstancedMesh(
-      box,
-      new THREE.MeshBasicMaterial({
-        color: "#ffd48b",
-        transparent: true,
-        opacity: 0.9,
-      }),
-      100,
+      pixelGeometry,
+      pixelMaterial("#ffffff", 0.25),
+      this.fragments.length,
+    );
+    this.burst.frustumCulled = false;
+    this.fragments.forEach((piece, i) =>
+      this.burst.setColorAt(i, color.set(piece.color)),
     );
     this.root.add(this.burst);
+    this.shockwave = new THREE.Mesh(
+      new THREE.RingGeometry(1, 1.12, 8),
+      new THREE.MeshBasicMaterial({
+        color: "#ffe1b2",
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+    );
+    this.shockwave.position.copy(this.impact);
+    this.shockwave.quaternion.copy(this.crashRotation);
+    this.root.add(this.shockwave);
   }
 
-  update({ time, progress, frame, active, calm }) {
+  update({ time, progress, frame, active, calm, route, duration }) {
     this.root.visible = active;
     if (!active) return;
     const { point, tangent, right, normal } = frame;
@@ -175,7 +225,7 @@ export class Encounters {
         .addScaledVector(normal, height);
     const face = (group) => group.lookAt(place(0, 0, 4));
     // A gentle companion establishes that the world is alive before danger appears.
-    const hello = windowEnvelope(progress, 0.1, 0.34, 0.045);
+    const hello = windowEnvelope(route, 0.015, 0.13, 0.018);
     this.companion.visible = hello > 0;
     this.companion.position.copy(
       place(24, 11 + (1 - hello) * 45, 11 + Math.sin(time * 1.2) * 1.5),
@@ -183,25 +233,42 @@ export class Encounters {
     face(this.companion);
     this.companion.rotation.z += Math.sin(time * 2) * 0.12;
 
-    // The sentinel emerges at the first crest and fires past either side of the car.
-    const ambush = windowEnvelope(progress, 0.4, 0.6, 0.04);
-    this.sentinel.visible = ambush > 0;
+    // The sentinel dives into the fixed right-hand tunnel pillar, then truly fractures.
+    const ambush = windowEnvelope(route, 0.137, CRASH.cameraT + 0.004, 0.012);
+    this.sentinel.visible = route > 0.137 && route < CRASH.cameraT;
     this.sentinel.position.copy(
       place(
-        80 - ambush * 39,
-        13 * Math.sin(time * 0.35),
-        15 + (1 - ambush) * 55,
+        56 - ambush * 14,
+        -12 + 9 * Math.sin(time * 0.35),
+        14 + (1 - ambush) * 38,
       ),
     );
     face(this.sentinel);
     this.sentinel.rotation.z += Math.sin(time * 0.9) * 0.15;
+    if (route >= CRASH.startT && route < CRASH.cameraT) {
+      const dive = ease(
+        (route - CRASH.startT) / (CRASH.cameraT - CRASH.startT),
+      );
+      const from = this.frameAt(CRASH.startT);
+      const startTime = this.motion.progressAt(CRASH.startT) * duration;
+      const start = from.point
+        .clone()
+        .addScaledVector(from.tangent, 42)
+        .addScaledVector(from.right, -12 + 9 * Math.sin(startTime * 0.35))
+        .addScaledVector(from.normal, 14);
+      this.sentinel.position
+        .lerpVectors(start, this.impact, dive)
+        .addScaledVector(normal, Math.sin(dive * Math.PI) * 9);
+      this.sentinel.quaternion.slerp(this.crashRotation, dive);
+    }
 
     // A segmented voxel dragon catches up from behind, pulls alongside and overtakes.
-    const chase = windowEnvelope(progress, 0.62, 0.92, 0.05);
-    const pursuit = clamp((progress - 0.62) / 0.3);
+    const chase = windowEnvelope(route, 0.36, 0.74, 0.045);
+    const pursuit = clamp((route - 0.36) / 0.38);
     const dragonForward = -18 + pursuit * 70;
-    const dragonSide = 14 + 5 * Math.sin(time * 0.65);
-    const dragonHeight = 12 + 4 * Math.sin(time * 0.8);
+    const shelter = tunnelCoverage(route);
+    const dragonSide = 14 + 5 * Math.sin(time * 0.65) + shelter * 12;
+    const dragonHeight = 12 + 4 * Math.sin(time * 0.8) + shelter * 16;
     this.dragon.visible = chase > 0;
     this.dragon.position.copy(
       place(dragonForward, dragonSide + (1 - chase) * 65, dragonHeight),
@@ -219,13 +286,13 @@ export class Encounters {
       );
       segment.lookAt(place(dragonForward - i * 4.1, dragonSide, dragonHeight));
     });
-    const squad = windowEnvelope(progress, 0.8, 0.985, 0.035);
+    const squad = windowEnvelope(route, 0.66, 0.96, 0.035);
     this.wings.forEach((drone, i) => {
       drone.visible = squad > 0;
       drone.position.copy(
         place(
           42 + i * 14 + Math.sin(time * 0.8) * 12,
-          (i ? -1 : 1) * (19 + (1 - squad) * 75) +
+          (i ? -1 : 1) * (19 + (1 - squad) * 75 + shelter * 10) +
             Math.sin(time * 1.3 + i * 2) * 5,
           13 + Math.sin(time * 1.1 + i) * 6,
         ),
@@ -237,31 +304,35 @@ export class Encounters {
       const period = calm ? 3.0 : 1.9;
       const flight = (time / period + i / 6) % 1;
       const source = i < 6 ? this.sentinel : this.wings[i % 2];
-      const enabled = i < 6 ? ambush > 0.9 && progress > 0.45 : squad > 0.9;
+      const enabled =
+        i < 6 ? ambush > 0.9 && route < CRASH.startT : squad > 0.9;
       bolt.visible = enabled && flight < 0.82;
       const origin = source.position.clone().addScaledVector(normal, -2);
       const target = place(-18, (i % 2 ? -1 : 1) * (7 + (i % 3)), 4 + (i % 3));
       bolt.position.lerpVectors(origin, target, Math.min(1, flight / 0.82));
       bolt.lookAt(target);
     });
-    // Confetti-like pixels scatter beside the coaster after a scripted near-miss.
-    const impact = windowEnvelope(progress, 0.55, 0.58, 0.006);
-    this.burst.visible = impact > 0;
-    if (impact > 0)
-      for (let i = 0; i < 100; i++) {
-        const phase = (progress - 0.55) / 0.03;
-        const angle = i * 2.39996;
-        const position = place(
-          14 - phase * 38,
-          -12 + Math.cos(angle) * phase * (8 + (i % 17)),
-          8 + Math.sin(angle) * phase * (5 + (i % 13)) - phase * phase * 12,
-        );
-        dummy.position.copy(position);
-        dummy.rotation.set(time + i, time * 0.7, i);
-        dummy.scale.setScalar(0.4 + (i % 5) * 0.15);
+    const age = time - this.motion.progressAt(CRASH.cameraT) * duration;
+    this.burst.visible = age >= 0 && age < 4;
+    this.shockwave.visible = age >= 0 && age < 0.8;
+    if (this.shockwave.visible) {
+      this.shockwave.scale.setScalar(1 + age * 25);
+      this.shockwave.material.opacity = (1 - age / 0.8) * 0.55;
+    }
+    if (this.burst.visible) {
+      this.fragments.forEach((piece, i) => {
+        dummy.position.copy(piece.origin).addScaledVector(piece.velocity, age);
+        dummy.position.y -= 4.905 * age * age;
+        dummy.quaternion.copy(this.crashRotation);
+        dummy.rotateX(age * (1 + (i % 3)));
+        dummy.rotateY(age * (i % 2 ? -1.7 : 1.3));
+        dummy.scale
+          .copy(piece.scale)
+          .multiplyScalar(1 - ease((age - 2.4) / 1.6));
         dummy.updateMatrix();
         this.burst.setMatrixAt(i, dummy.matrix);
-      }
-    if (impact > 0) this.burst.instanceMatrix.needsUpdate = true;
+      });
+      this.burst.instanceMatrix.needsUpdate = true;
+    }
   }
 }
