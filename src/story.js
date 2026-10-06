@@ -23,3 +23,16 @@ export function tunnelCoverage(t) {
     ),
   );
 }
+
+export const ARENA = {
+  start: 0.506,
+  end: 0.65,
+  chargeStart: 0.586,
+  impact: 0.603,
+  gantry: 0.618,
+  throws: [
+    { windup: 0.516, release: 0.527, pass: 0.542, side: -1 },
+    { windup: 0.538, release: 0.548, pass: 0.565, side: 1 },
+    { windup: 0.56, release: 0.573, pass: 0.589, side: -1 },
+  ],
+};

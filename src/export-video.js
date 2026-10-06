@@ -1,5 +1,5 @@
 import { synthesizeEffects, mixChannels } from "./effects-audio.js";
-import { CRASH } from "./story.js";
+import { CRASH, ARENA } from "./story.js";
 import {
   AudioBufferSource,
   BufferTarget,
@@ -80,6 +80,7 @@ export async function renderVideo({
   signal,
   onProgress,
   preview = false,
+  previewScene = "collision",
 }) {
   if (!(await canEncodeVideo("avc", { width, height, frameRate: fps })))
     throw new Error(
@@ -113,14 +114,29 @@ export async function renderVideo({
   mixed.forEach((channel, c) => audio.copyToChannel(channel, c));
   if (signal.aborted) throw new DOMException("Render cancelled", "AbortError");
 
-  const renderDuration = preview ? Math.min(12, duration) : duration;
-  const previewStart = Math.max(
+  const arenaStart = Math.max(
     0,
-    Math.min(
-      duration - renderDuration,
-      world.motion.progressAt(CRASH.cameraT) * duration - 4,
-    ),
+    world.motion.progressAt(ARENA.start) * duration - 0.5,
   );
+  const arenaEnd = Math.min(
+    duration,
+    world.motion.progressAt(ARENA.impact) * duration + 6,
+  );
+  const renderDuration = preview
+    ? previewScene === "arena"
+      ? arenaEnd - arenaStart
+      : Math.min(12, duration)
+    : duration;
+  const previewStart =
+    previewScene === "arena"
+      ? arenaStart
+      : Math.max(
+          0,
+          Math.min(
+            duration - renderDuration,
+            world.motion.progressAt(CRASH.cameraT) * duration - 4,
+          ),
+        );
   const target = new BufferTarget();
   const output = new Output({
     format: new Mp4OutputFormat({ fastStart: "in-memory" }),

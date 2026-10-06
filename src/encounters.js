@@ -1,6 +1,12 @@
 import * as THREE from "three";
 import { clamp } from "./ride.js";
 import { pixelGeometry, pixelMaterial } from "./materials.js";
+import {
+  makeSentry,
+  makeCompanion,
+  makeDrake,
+  voxelEllipsoid,
+} from "./sculpt.js";
 import { CRASH, tunnelCoverage } from "./story.js";
 
 const box = new THREE.BoxGeometry(1, 1, 1);
@@ -59,19 +65,6 @@ function sprite(pattern, palette, size = 1) {
   return group;
 }
 
-const sentinelPattern = [
-  "..X.......X..",
-  ".XXX.....XXX.",
-  "..XXXXXXXXX..",
-  ".XXEEEEEEEXX.",
-  "XXXEE.X.EEXXX",
-  "XXXX..X..XXXX",
-  ".XXXXXXXXXXX.",
-  "..XXKKKKKXX..",
-  "...XXXXXXX...",
-  ".XXX.....XXX.",
-  "XX.........XX",
-];
 const wingPattern = [
   "X...............X",
   "XX.............XX",
@@ -104,43 +97,33 @@ export class Encounters {
     this.scene = scene;
     this.root = new THREE.Group();
     scene.add(this.root);
-    this.sentinel = sprite(
-      sentinelPattern,
-      { X: "#ff0643", E: "#40ffe0", K: "#451b50" },
-      1.45,
-    );
+    this.sentinel = makeSentry();
     this.root.add(this.sentinel);
-    this.companion = sprite(
-      [
-        "..X...X..",
-        "...XXX...",
-        "..XXXXX..",
-        ".XXEXEXX.",
-        "..XXXXX..",
-        "...X.X...",
-      ],
-      { X: "#ffae00", E: "#42264e" },
-      0.65,
-    );
+    this.sentinelLight = new THREE.PointLight("#ff174d", 270, 50, 2);
+    this.sentinelLight.position.set(0, -2, 7);
+    this.sentinel.add(this.sentinelLight);
+    this.companion = makeCompanion();
     this.root.add(this.companion);
-    this.dragon = sprite(
-      wingPattern,
-      { X: "#00ff8c", E: "#b5ff37", K: "#235275" },
-      1.2,
-    );
+    this.dragon = makeDrake();
     this.root.add(this.dragon);
     this.tail = Array.from({ length: 12 }, (_, i) => {
       const segment = new THREE.Group();
-      const body = new THREE.Mesh(
-        new THREE.BoxGeometry(3.6 - i * 0.16, 3.3 - i * 0.13, 4.5),
-        pixelMaterial(i % 2 ? "#00cda1" : "#00f79c", 0.65),
+      voxelEllipsoid(
+        segment,
+        [0, 0, 0],
+        [2.3 - i * 0.11, 2.1 - i * 0.1, 2.7],
+        i % 2 ? "#00cda1" : "#00f79c",
+        0.68,
+        0.4,
       );
-      const fin = new THREE.Mesh(
-        new THREE.BoxGeometry(0.7, 3.7 - i * 0.14, 1.8),
-        new THREE.MeshBasicMaterial({ color: "#ff00a8" }),
+      voxelEllipsoid(
+        segment,
+        [0, 2.6 - i * 0.09, 0],
+        [0.6, 1.9 - i * 0.08, 1.2],
+        "#ff00a8",
+        0.5,
+        0.6,
       );
-      fin.position.y = 2.8 - i * 0.1;
-      segment.add(body, fin);
       this.root.add(segment);
       return segment;
     });
@@ -263,8 +246,8 @@ export class Encounters {
     }
 
     // A segmented voxel dragon catches up from behind, pulls alongside and overtakes.
-    const chase = windowEnvelope(route, 0.36, 0.74, 0.045);
-    const pursuit = clamp((route - 0.36) / 0.38);
+    const chase = windowEnvelope(route, 0.35, 0.468, 0.025);
+    const pursuit = clamp((route - 0.35) / 0.118);
     const dragonForward = -18 + pursuit * 70;
     const shelter = tunnelCoverage(route);
     const dragonSide = 14 + 5 * Math.sin(time * 0.65) + shelter * 12;

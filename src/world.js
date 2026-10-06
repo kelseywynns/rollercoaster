@@ -6,9 +6,14 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { clamp } from "./ride.js";
 import { createMotionProfile } from "./motion.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { pixelMaterial, setPixelEnvironment } from "./materials.js";
+import {
+  pixelMaterial,
+  setPixelEnvironment,
+  setCrystalTime,
+} from "./materials.js";
 import { buildTunnels } from "./tunnels.js";
 import { tunnelCoverage } from "./story.js";
+import { ArcadeArena } from "./arena.js";
 import { Encounters } from "./encounters.js";
 
 const up = new THREE.Vector3(0, 1, 0);
@@ -150,6 +155,10 @@ export class VoxelWorld {
     this.solids.build();
     this.glowMesh = this.glows.build();
     this.encounters = new Encounters(this.scene, {
+      frameAt: (t) => this.frameAt(t),
+      motion: this.motion,
+    });
+    this.arena = new ArcadeArena(this.scene, {
       frameAt: (t) => this.frameAt(t),
       motion: this.motion,
     });
@@ -781,6 +790,14 @@ export class VoxelWorld {
     this.energy += (energy - this.energy) * Math.min(1, delta * 5);
     const calm = gentle || this.reducedMotion;
     this.car.visible = mode !== "idle";
+    setCrystalTime(time);
+    const motion = this.motion.sample(progress, duration);
+    this.arena.update({
+      route: motion.t,
+      time,
+      duration,
+      active: mode !== "idle",
+    });
     if (mode === "idle") {
       const sway = calm ? 0 : Math.sin(time * 0.12) * 3;
       this.camera.position.set(
@@ -798,6 +815,11 @@ export class VoxelWorld {
         Math.min(1, t + (calm ? 0.009 : 0.005)),
       );
       target.addScaledVector(normal, 3.8);
+      if (this.arena.focusWeight > 0)
+        target.lerp(
+          this.arena.focusTarget,
+          this.arena.focusWeight * (calm ? 0.55 : 1),
+        );
       if (t > 0.997) target.copy(this.camera.position).add(tangent);
       this.camera.up.copy(up);
       this.camera.lookAt(target);
@@ -823,7 +845,6 @@ export class VoxelWorld {
       this.camera.position.z - 1150,
     );
     this.stars.position.z = this.camera.position.z * 0.95;
-    const motion = this.motion.sample(progress, duration);
     this.encounters.update({
       time,
       progress,
@@ -844,6 +865,7 @@ export class VoxelWorld {
       .lerp(new THREE.Color("#040b20"), inside);
     this.scene.fog.density = 0.0008 + inside * 0.002;
     this.headlight.visible = mode !== "idle";
+    this.headlight.intensity = this.arena.actors.visible ? 24 : 55;
     this.bloom.strength = 0.42 + this.energy * 0.12;
     this.composer.render();
   }

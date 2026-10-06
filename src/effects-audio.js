@@ -1,8 +1,15 @@
-import { CRASH, TUNNELS, tunnelCoverage, smooth } from "./story.js";
+import { CRASH, TUNNELS, ARENA, tunnelCoverage, smooth } from "./story.js";
 
 export function effectCues(duration, motion) {
   const at = (route) => motion.progressAt(route) * duration;
   const cues = [{ type: "shatter", time: at(CRASH.cameraT), length: 1.8 }];
+  cues.push({ type: "warden", time: at(ARENA.start) + 0.6, length: 2.2 });
+  cues.push({ type: "warden", time: at(ARENA.chargeStart), length: 1.4 });
+  cues.push({ type: "cascade", time: at(ARENA.impact), length: 4.8 });
+  for (const shot of ARENA.throws) {
+    cues.push({ type: "whoosh", time: at(shot.release), length: 1.1 });
+    cues.push({ type: "drum", time: at(shot.pass) - 0.45, length: 1.2 });
+  }
   for (const tunnel of TUNNELS) {
     cues.push({ type: "whoosh", time: at(tunnel.start) - 0.35, length: 1.25 });
     cues.push({ type: "whoosh", time: at(tunnel.end) - 0.15, length: 0.85 });
@@ -76,6 +83,33 @@ export function synthesizeEffects(duration, motion, sampleRate = 48000) {
         value =
           (noise() * 0.052 + Math.sin(t * 310) * 0.013) *
           Math.sin(Math.PI * x) ** 2;
+      if (cue.type === "warden")
+        value =
+          (Math.sin(2 * Math.PI * 63 * t) +
+            0.5 * Math.sin(2 * Math.PI * 94 * t)) *
+          0.026 *
+          Math.sin(Math.PI * x) ** 2 *
+          (0.8 + 0.2 * Math.sin(t * 15));
+      if (cue.type === "drum")
+        value =
+          (Math.sin(t * 480) * 0.035 + noise() * 0.045) *
+          Math.sin(Math.PI * x) ** 2;
+      if (cue.type === "cascade") {
+        value = noise() * 0.18 * Math.exp(-t * 7) * (1 - Math.exp(-t * 120));
+        value +=
+          Math.sin(2 * Math.PI * (70 * t - 8 * t * t)) *
+          0.07 *
+          Math.exp(-t * 4);
+        for (let chip = 0; chip < 21; chip++) {
+          const age = t - chip * 0.17;
+          if (age > 0)
+            value +=
+              Math.sin(2 * Math.PI * (620 + (chip % 7) * 185) * age) *
+              0.017 *
+              Math.exp(-age * 11) *
+              (1 - Math.exp(-age * 130));
+        }
+      }
       if (cue.type === "shatter") {
         value = noise() * 0.2 * Math.exp(-t * 11) * (1 - Math.exp(-t * 160));
         for (let n = 0; n < 5; n++) {

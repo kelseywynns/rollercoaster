@@ -34,3 +34,54 @@ export function pixelMaterial(
   }
   return material;
 }
+
+// Shared clock keeps the faint internal pixel grid deterministic during seeking and export.
+const crystalClock = { value: 0 };
+export function setCrystalTime(time) {
+  crystalClock.value = time;
+}
+export function crystalMaterial(intensity = 0.4) {
+  const material = pixelMaterial("#ffffff", intensity, true);
+  material.metalness = 0.16;
+  material.roughness = 0.17;
+  material.clearcoat = 1;
+  material.ior = 1.46;
+  material.envMapIntensity = 1.15;
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.crystalTime = crystalClock;
+    shader.vertexShader =
+      "varying vec2 crystalUv; varying float crystalSeed;\n" +
+      shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace(
+      "#include <begin_vertex>",
+      `
+      #include <begin_vertex>
+      crystalUv = uv;
+      crystalSeed = 0.0;
+      #ifdef USE_INSTANCING
+        crystalSeed = dot(instanceMatrix[3].xyz, vec3(0.73, 1.31, 0.39));
+      #endif
+    `,
+    );
+    shader.fragmentShader =
+      "uniform float crystalTime; varying vec2 crystalUv; varying float crystalSeed;\n" +
+      shader.fragmentShader;
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <emissivemap_fragment>",
+      `
+      #include <emissivemap_fragment>
+      #ifdef USE_COLOR
+        totalEmissiveRadiance *= vColor.rgb;
+      #endif
+      vec2 edgeDistance = min(crystalUv, 1.0 - crystalUv);
+      float edge = 1.0 - smoothstep(0.018, 0.045, min(edgeDistance.x, edgeDistance.y));
+      vec2 gridUv = fract(crystalUv * 3.0);
+      vec2 gridDistance = min(gridUv, 1.0 - gridUv);
+      float grid = 1.0 - smoothstep(0.015, 0.045, min(gridDistance.x, gridDistance.y));
+      float shimmer = 0.93 + 0.07 * sin(crystalTime * 1.4 + crystalSeed * 2.7);
+      totalEmissiveRadiance *= (0.48 + edge * 1.5 + grid * 0.2) * shimmer;
+    `,
+    );
+  };
+  return material;
+}
