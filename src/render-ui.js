@@ -11,7 +11,7 @@ export function installRenderUI({
   const dialog = document.createElement("dialog");
   dialog.id = "render-dialog";
   dialog.setAttribute("aria-labelledby", "render-title");
-  dialog.innerHTML = `<button class="dialog-close icon-button" id="render-close" aria-label="Close video export">×</button><div class="eyebrow">TAKE THE WORLD WITH YOU</div><h2 id="render-title">Keep the rush.</h2><p>Render a film of the ride with its soundtrack. Clean footage, no interface, and every single frame.</p><div class="render-spec"><span>60 FPS</span><span>H.264 MP4</span><span>AAC AUDIO</span></div><label class="render-label" for="render-resolution">Resolution</label><select id="render-resolution"><option value="1080">Full HD · 1920 × 1080</option><option value="2160">4K · 3840 × 2160</option></select><label class="render-label" for="render-length">Length</label><select id="render-length"><option value="full">Full ride</option><option value="preview">12-second collision preview</option><option value="arena">Arcade arena preview</option></select><p class="render-note">Rendering may take a few minutes. Keep this tab open. The video includes the currently selected soundtrack and soft sound effects.</p><div id="render-progress-area" hidden><progress id="render-progress" value="0" max="100"></progress><strong id="render-status" role="status">Preparing…</strong><small id="render-remaining"></small></div><button class="primary-button dialog-done" id="render-start">Render video <span>↗</span></button><button id="render-cancel" class="text-button" hidden>Cancel render</button><a id="render-download" class="primary-button dialog-done" hidden>Download MP4 <span>↓</span></a>`;
+  dialog.innerHTML = `<button class="dialog-close icon-button" id="render-close" aria-label="Close video export">×</button><div class="eyebrow">TAKE THE WORLD WITH YOU</div><h2 id="render-title">Keep the rush.</h2><p>Render a film of the ride with its soundtrack. Clean footage, no interface, and every single frame.</p><div class="render-spec"><span>60 FPS</span><span>H.264 MP4</span><span>AAC AUDIO</span></div><label class="render-label" for="render-resolution">Resolution</label><select id="render-resolution"><option value="1080">Full HD · 1920 × 1080</option><option value="2160">4K · 3840 × 2160</option></select><label class="render-label" for="render-length">Length</label><select id="render-length"><option value="full">Full ride</option><option value="preview">12-second collision preview</option><option value="arena">Arcade arena preview</option><option value="action">Boost + combat + jump preview</option></select><p class="render-note">Rendering may take a few minutes. Keep this tab open. The video includes the currently selected soundtrack and soft sound effects.</p><div id="render-progress-area" hidden><progress id="render-progress" value="0" max="100"></progress><strong id="render-status" role="status">Preparing…</strong><small id="render-remaining"></small></div><button class="primary-button dialog-done" id="render-start">Render video <span>↗</span></button><button id="render-cancel" class="text-button" hidden>Cancel render</button><a id="render-download" class="primary-button dialog-done" hidden>Download MP4 <span>↓</span></a>`;
   document.body.appendChild(dialog);
   const $ = (selector) => dialog.querySelector(selector);
   let aborter, resultUrl;
@@ -60,8 +60,7 @@ export function installRenderUI({
         width: (height * 16) / 9,
         height,
         preview,
-        previewScene:
-          $("#render-length").value === "arena" ? "arena" : "collision",
+        previewScene: $("#render-length").value,
         signal: aborter.signal,
         onProgress: ({ percent, label, remaining }) => {
           $("#render-progress").value = percent;

@@ -1,4 +1,14 @@
-import { CRASH, TUNNELS, ARENA, tunnelCoverage, smooth } from "./story.js";
+import {
+  CRASH,
+  TUNNELS,
+  ARENA,
+  BOOSTS,
+  JUMPS,
+  tunnelCoverage,
+  smooth,
+} from "./story.js";
+
+import { combatEvents, shotOffsets, shotFlight } from "./combat.js";
 
 export function effectCues(duration, motion) {
   const at = (route) => motion.progressAt(route) * duration;
@@ -23,6 +33,22 @@ export function effectCues(duration, motion) {
       (route > 0.695 && route < 0.925)
     )
       cues.push({ type: "bolt", time, length: 0.21 });
+  }
+  for (const atRoute of BOOSTS)
+    cues.push({ type: "boost", time: at(atRoute), length: 1.25 });
+  for (const jump of JUMPS) {
+    cues.push({ type: "whoosh", time: at(jump.start), length: 0.7 });
+    cues.push({ type: "land", time: at(jump.end), length: 0.7 });
+  }
+  for (const enemy of combatEvents(motion, duration)) {
+    for (const offset of shotOffsets)
+      cues.push({
+        type: "return",
+        time: enemy.killTime + offset - shotFlight,
+        length: 0.13,
+      });
+    cues.push({ type: "confirm", time: enemy.killTime, length: 0.36 });
+    cues.push({ type: "enemy-shatter", time: enemy.killTime, length: 0.55 });
   }
   return cues.sort((a, b) => a.time - b.time);
 }
@@ -69,6 +95,29 @@ export function synthesizeEffects(duration, motion, sampleRate = 48000) {
       const t = j / sampleRate,
         x = t / cue.length;
       let value = 0;
+      if (cue.type === "return")
+        value =
+          Math.sin(2 * Math.PI * (1250 * t - 2800 * t * t)) *
+          0.1 *
+          Math.exp(-t * 28) *
+          (1 - Math.exp(-t * 400));
+      if (cue.type === "confirm")
+        value =
+          Math.sin(2 * Math.PI * (t < 0.1 ? 1046 : 1568) * t) *
+          0.045 *
+          Math.exp(-t * 9) *
+          (1 - Math.exp(-t * 150));
+      if (cue.type === "boost")
+        value =
+          (Math.sin(2 * Math.PI * (90 * t + 140 * t * t)) * 0.07 +
+            noise() * 0.04) *
+          Math.sin(Math.PI * x) ** 2;
+      if (cue.type === "land")
+        value =
+          (Math.sin(2 * Math.PI * (65 * t - 20 * t * t)) * 0.19 +
+            noise() * 0.08) *
+          Math.exp(-t * 12) *
+          (1 - Math.exp(-t * 250));
       if (cue.type === "tick")
         value =
           noise() * 0.038 * Math.exp(-t * 85) +
@@ -110,7 +159,7 @@ export function synthesizeEffects(duration, motion, sampleRate = 48000) {
               (1 - Math.exp(-age * 130));
         }
       }
-      if (cue.type === "shatter") {
+      if (cue.type === "shatter" || cue.type === "enemy-shatter") {
         value = noise() * 0.2 * Math.exp(-t * 11) * (1 - Math.exp(-t * 160));
         for (let n = 0; n < 5; n++) {
           const age = t - n * 0.045;

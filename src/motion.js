@@ -1,4 +1,5 @@
 import { clamp } from "./ride.js";
+import { boostPower, JUMPS } from "./story.js";
 
 // Solve speed from changes in potential energy, then integrate dt = ds / v.
 // A chain lift sets the opening pace; later hills exchange height for speed.
@@ -18,21 +19,21 @@ export function createMotionProfile(curve, samples = 3600) {
     const previousSpeed = speed,
       dh = heights[i] - heights[i - 1];
     if (t < 0.012) {
-      speed = 3.2 + 15.8 * Math.sin(((t / 0.012) * Math.PI) / 2);
+      speed = 3.2 + 27.8 * Math.sin(((t / 0.012) * Math.PI) / 2);
     } else if (t < 0.166) {
       const crest = clamp((t - 0.135) / 0.031);
-      speed = (19 + (9 * t) / 0.166) * (1 - 0.45 * crest * crest);
+      speed = (38 + (18 * t) / 0.166) * (1 - 0.62 * crest * crest);
     } else {
-      const boost = t > 0.66 ? 4.8 : 0.75;
+      const boost = (t > 0.66 ? 5.4 : 0.75) + boostPower(t) * 46;
       const drag = 0.00065 * speed * speed;
       const liftFloor = t > 0.66 ? 30 : 11;
       speed = Math.sqrt(
         Math.max(
           liftFloor * liftFloor,
-          speed * speed - 2 * 9.81 * dh + 2 * (boost - drag) * ds,
+          speed * speed - 2 * 13.2 * dh + 2 * (boost - drag) * ds,
         ),
       );
-      speed = Math.min(speed, t > 0.66 ? 88 : 73);
+      speed = Math.min(speed, t > 0.66 ? 113 : 88);
     }
     elapsed += ds / ((previousSpeed + speed) / 2);
     times[i] = elapsed;
@@ -68,4 +69,62 @@ export function createMotionProfile(curve, samples = 3600) {
       };
     },
   };
+}
+
+// The visible ramp's slope matches the extra upward launch velocity.
+export function launchHeight(jump, motion) {
+  const rampTime =
+    motion.progressAt(jump.start) - motion.progressAt(jump.start - 0.004);
+  const flightTime =
+    motion.progressAt(jump.end) - motion.progressAt(jump.start);
+  return (4 * jump.height * rampTime) / (2 * flightTime + rampTime);
+}
+export function railLift(route, motion) {
+  for (const jump of JUMPS)
+    if (route >= jump.start - 0.004 && route <= jump.start) {
+      const x =
+        (motion.progressAt(route) - motion.progressAt(jump.start - 0.004)) /
+        (motion.progressAt(jump.start) - motion.progressAt(jump.start - 0.004));
+      return launchHeight(jump, motion) * x * x;
+    }
+  return 0;
+}
+
+// Pure timeline pose: frame stepping, scrubbing and audio-length changes agree.
+export function flightPose(route, time, duration, motion, frameAt) {
+  const frame = frameAt(route);
+  const position = frame.point.clone().addScaledVector(frame.normal, 3.8);
+  const ramp = railLift(route, motion);
+  position.y += ramp;
+  let lift = ramp,
+    landing = 0,
+    airborne = false,
+    pitch = 0;
+  for (const jump of JUMPS) {
+    const takeoff = motion.progressAt(jump.start) * duration;
+    const touchdown = motion.progressAt(jump.end) * duration;
+    if (route >= jump.start && route <= jump.end) {
+      const x = clamp((time - takeoff) / (touchdown - takeoff));
+      const a = frameAt(jump.start),
+        b = frameAt(jump.end);
+      // A ballistic arc bridges the missing track; the rails fall away underneath.
+      lift =
+        4 * jump.height * x * (1 - x) + launchHeight(jump, motion) * (1 - x);
+      position
+        .lerpVectors(a.point, b.point, x)
+        .addScaledVector(frame.normal, 3.8);
+      position.y += lift;
+      pitch = (1 - 2 * x) * 0.09;
+      airborne = true;
+    }
+    const age = time - touchdown;
+    if (age > 0 && age < 0.8) {
+      landing = Math.max(landing, Math.exp(-age * 7));
+      position.addScaledVector(
+        frame.normal,
+        -0.7 * Math.sin(age * 22) * Math.exp(-age * 7),
+      );
+    }
+  }
+  return { position, frame, lift, landing, airborne, pitch };
 }

@@ -4,7 +4,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { clamp } from "./ride.js";
-import { createMotionProfile } from "./motion.js";
+import { createMotionProfile, flightPose, railLift } from "./motion.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import {
   pixelMaterial,
@@ -12,7 +12,10 @@ import {
   setCrystalTime,
 } from "./materials.js";
 import { buildTunnels } from "./tunnels.js";
-import { tunnelCoverage } from "./story.js";
+import { tunnelCoverage, boostPower, inRailGap } from "./story.js";
+import { Trackside } from "./trackside.js";
+import { ArcadeCombat } from "./combat.js";
+import { makeRushPass } from "./rush-pass.js";
 import { ArcadeArena } from "./arena.js";
 import { Encounters } from "./encounters.js";
 
@@ -149,6 +152,11 @@ export class VoxelWorld {
     pmrem.dispose();
     this.makeWorld();
     this.makeTrack();
+    this.trackside = new Trackside(
+      this.scene,
+      (t) => this.frameAt(t),
+      this.length,
+    );
     buildTunnels(this.scene, (t) => this.frameAt(t), this.length);
     this.makeCreatures();
     this.makeParticles();
@@ -163,10 +171,16 @@ export class VoxelWorld {
       motion: this.motion,
     });
     this.makeCar();
+    this.combat = new ArcadeCombat(this.scene, this.camera, {
+      frameAt: (t) => this.frameAt(t),
+      motion: this.motion,
+    });
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.4, 0.5, 0.6);
     this.composer.addPass(this.bloom);
+    this.rushPass = makeRushPass();
+    this.composer.addPass(this.rushPass);
     this.composer.addPass(new OutputPass());
     this.resize();
     this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -551,22 +565,33 @@ export class VoxelWorld {
   }
 
   makeTrack() {
-    const railPoints = [[], []];
+    const railSegments = [];
+    let railPoints = [[], []];
+    let wasGap = false;
     const deckPositions = [],
       deckColors = [];
     for (let i = 0; i <= 1800; i++) {
       const t = i / 1800,
         { point, right, normal } = this.frameAt(t);
-      for (let side = 0; side < 2; side++)
-        railPoints[side].push(
-          point.clone().addScaledVector(right, side === 0 ? -4.15 : 4.15),
-        );
-      if (i % 2 === 0) {
+      point.y += railLift(t, this.motion);
+      const gap = inRailGap(t);
+      if (gap && !wasGap) {
+        railSegments.push(railPoints);
+        railPoints = [[], []];
+      }
+      wasGap = gap;
+      if (!gap)
+        for (let side = 0; side < 2; side++)
+          railPoints[side].push(
+            point.clone().addScaledVector(right, side === 0 ? -4.15 : 4.15),
+          );
+      if (i % 2 === 0 && !gap) {
         const a = point.clone().addScaledVector(right, -5.0),
           b = point.clone().addScaledVector(right, 5.0);
         const next = this.frameAt(
           Math.min(1, t + 0.00055),
         ).point.addScaledVector(normal, -0.45);
+        next.y += railLift(Math.min(1, t + 0.00055), this.motion);
         const c = next.clone().addScaledVector(right, 5),
           d = next.clone().addScaledVector(right, -5);
         for (const v of [a, b, c, a, c, d]) {
@@ -574,7 +599,7 @@ export class VoxelWorld {
           deckColors.push(0.23, 0.25, 0.39);
         }
       }
-      if (i % 16 === 0 && i < 1800) {
+      if (i % 16 === 0 && i < 1800 && !gap) {
         const supportHeight = Math.max(20, point.y + 65);
         this.solids.add(
           point.x,
@@ -619,28 +644,44 @@ export class VoxelWorld {
         }),
       ),
     );
-    railPoints.forEach((points, i) => {
-      const line = new THREE.CatmullRomCurve3(points);
-      this.scene.add(
-        new THREE.Mesh(
-          new THREE.TubeGeometry(line, 2400, 0.47, 5, false),
-          new THREE.MeshBasicMaterial({
-            color: i ? "#ff238c" : "#00dbff",
-            toneMapped: false,
+    railSegments.push(railPoints);
+    railSegments.forEach((segment) =>
+      segment.forEach((points, i) => {
+        if (points.length < 2) return;
+        const line = new THREE.CatmullRomCurve3(points);
+        this.scene.add(
+          new THREE.Mesh(
+            new THREE.TubeGeometry(
+              line,
+              Math.max(8, points.length * 2),
+              0.47,
+              5,
+              false,
+            ),
+            new THREE.MeshBasicMaterial({
+              color: i ? "#ff238c" : "#00dbff",
+              toneMapped: false,
+            }),
+          ),
+        );
+        const base = new THREE.Mesh(
+          new THREE.TubeGeometry(
+            line,
+            Math.max(8, points.length),
+            0.95,
+            4,
+            false,
+          ),
+          new THREE.MeshStandardMaterial({
+            color: "#28355c",
+            metalness: 0.6,
+            roughness: 0.3,
           }),
-        ),
-      );
-      const base = new THREE.Mesh(
-        new THREE.TubeGeometry(line, 1800, 0.95, 4, false),
-        new THREE.MeshStandardMaterial({
-          color: "#28355c",
-          metalness: 0.6,
-          roughness: 0.3,
-        }),
-      );
-      base.position.y = -0.8;
-      this.scene.add(base);
-    });
+        );
+        base.position.y = -0.8;
+        this.scene.add(base);
+      }),
+    );
     // Illuminated gates accelerate in frequency as the ride reaches its final act.
     for (let i = 0; i < 27; i++) {
       const t = i < 6 ? 0.035 + i * 0.12 : 0.68 + (i - 6) * 0.0137;
@@ -798,6 +839,7 @@ export class VoxelWorld {
       duration,
       active: mode !== "idle",
     });
+    let landing = 0;
     if (mode === "idle") {
       const sway = calm ? 0 : Math.sin(time * 0.12) * 3;
       this.camera.position.set(
@@ -810,11 +852,18 @@ export class VoxelWorld {
     } else {
       const { t, speed } = this.motion.sample(progress, duration),
         { point, tangent, normal } = this.frameAt(t);
-      this.camera.position.copy(point).addScaledVector(normal, 3.8);
+      const pose = flightPose(t, time, duration, this.motion, (v) =>
+        this.frameAt(v),
+      );
+      landing = pose.landing;
+      this.camera.position.copy(pose.position);
+      this.car.position.y = calm ? 0 : -landing * 0.18;
+      this.car.rotation.x = calm ? 0 : -landing * 0.045;
       const target = this.curve.getPointAt(
         Math.min(1, t + (calm ? 0.009 : 0.005)),
       );
       target.addScaledVector(normal, 3.8);
+      target.y += pose.lift * 0.88;
       if (this.arena.focusWeight > 0)
         target.lerp(
           this.arena.focusTarget,
@@ -825,19 +874,39 @@ export class VoxelWorld {
       this.camera.lookAt(target);
       const nextTangent = this.curve.getTangentAt(Math.min(1, t + 0.008));
       const turn = tangent.x * nextTangent.z - tangent.z * nextTangent.x;
-      this.camera.rotateZ(calm ? 0 : clamp(turn * 2.2, -0.24, 0.24));
+      this.camera.rotateZ(calm ? 0 : clamp(turn * 3.0, -0.36, 0.36));
       this.camera.rotateY(this.look.x * 0.34);
-      this.camera.rotateX(this.look.y * 0.19);
+      this.camera.rotateX(this.look.y * 0.19 + (calm ? 0 : pose.pitch));
       const rush = clamp((speed - 12) / 65);
-      this.camera.fov = calm ? 65 : 59 + rush * 19 + this.energy * 1.0;
+      this.camera.fov = calm
+        ? 65
+        : 59 +
+          rush * 20 +
+          boostPower(t) * 6 +
+          pose.landing * 2 +
+          this.energy * 1.0;
       // A restrained vertical tremor reads as track contact; lift hills feel steadier.
       if (!calm)
         this.camera.position.addScaledVector(
           normal,
-          Math.sin(time * 27) * 0.016 * rush,
+          Math.sin(time * 27) * (pose.airborne ? 0 : 0.028 * rush) +
+            Math.sin(time * 43) * pose.landing * 0.11,
         );
     }
     this.camera.updateProjectionMatrix();
+    this.camera.updateMatrixWorld(true);
+    this.combat.update({
+      time,
+      duration,
+      active: mode !== "idle",
+      calm,
+      landing,
+    });
+    this.rushPass.uniforms.amount.value =
+      calm || mode === "idle"
+        ? 0
+        : clamp((motion.speed - 35) / 75) * 0.038 +
+          boostPower(motion.t) * 0.022;
     this.sky.position.copy(this.camera.position);
     this.moon.position.set(
       this.camera.position.x + 360,

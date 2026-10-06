@@ -218,7 +218,8 @@ export class Encounters {
 
     // The sentinel dives into the fixed right-hand tunnel pillar, then truly fractures.
     const ambush = windowEnvelope(route, 0.137, CRASH.cameraT + 0.004, 0.012);
-    this.sentinel.visible = route > 0.137 && route < CRASH.cameraT;
+    this.sentinel.visible =
+      route > 0.137 && time < this.motion.progressAt(CRASH.cameraT) * duration;
     this.sentinel.position.copy(
       place(
         56 - ambush * 14,

@@ -24,11 +24,13 @@ test("the ride begins slowly and reserves the first major drop for the build-up"
 test("gravity accelerates the descent and reduces speed on the following climb", () => {
   const crest = motion.sample(motion.progressAt(0.166)),
     descent = motion.sample(motion.progressAt(0.234)),
-    nextHill = motion.sample(motion.progressAt(0.34));
+    valley = motion.sample(motion.progressAt(0.47)),
+    nextHill = motion.sample(motion.progressAt(0.54));
   assert.ok(descent.height < crest.height - 50);
   assert.ok(descent.speed > crest.speed * 2);
-  assert.ok(nextHill.height > descent.height + 50);
-  assert.ok(nextHill.speed < descent.speed * 0.6);
+  // This entire hill is beyond the second boost, with no active power injection.
+  assert.ok(nextHill.height > valley.height + 60);
+  assert.ok(nextHill.speed < valley.speed * 0.8);
 });
 
 test("motion is deterministic, continuous and reaches the end for any soundtrack duration", () => {

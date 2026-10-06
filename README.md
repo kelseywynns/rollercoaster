@@ -24,13 +24,19 @@ The built-in ride lasts 2:30 and progresses through four acts:
 1. **The awakening** — a slow departure through floating gardens with a curious pixel companion.
 2. **Neon ascent** — an accelerating chain-lift climb, cool crystalline colors, and a sentinel appearing at the crest.
 3. **Pixel freefall** — gravity-driven drops, a firing sentinel, and a sentinel smashing into a tunnel pillar, bursting into its individual cubes.
-4. **Hyperdrive** — a towering arcade arena, a leaping voxel titan, a cloud of falling pixels, attacking drones, and illuminated boost gates.
+4. **Hyperdrive** — a towering arcade arena, a leaping voxel titan, a cloud of falling pixels, attacking drones, and induction boosters, reciprocal laser battles, and broken-rail jumps.
 
-Motion is integrated from gravitational potential energy, drag, lift speed, and late-ride boosters. Descents gain speed and subsequent climbs lose it. The opening spends roughly the first 39 seconds building anticipation before the first large drop. Character encounters are scripted; no shooting controls or gameplay are needed.
+Motion is integrated from gravitational potential energy, drag, lift speed, and late-ride boosters. Descents gain speed and subsequent climbs lose it. The opening spends roughly the first 37 seconds building anticipation before the first large drop. The coaster automatically fights back; no controls or gameplay are required.
 
 The amber scout, ruby sentinel and emerald drake are sculpted from smaller surface voxels, with projecting faces and glowing seams. Their glass-like materials preserve individual cube edges and a faint internal grid.
 
-After the second tunnel (about 1:37), the **Prism Warden** appears in an arena of stacked red girders and cyan ladders. Its 8,821 surface cubes form an articulated body, hands, face and horns. Three plasma drums follow parabolic paths past the car and cast orange light onto polished platforms. The creature then leaps into a fixed overhead beam and progressively fractures into more than 24,000 cubes and smaller shards as the coaster passes underneath. A gentle camera cue frames the action.
+After the second tunnel (about 1:30), the **Prism Warden** appears in an arena of stacked red girders and cyan ladders. Its 8,821 surface cubes form an articulated body, hands, face and horns. Three plasma drums follow parabolic paths past the car and cast orange light onto polished platforms. The creature then leaps into a fixed overhead beam and progressively fractures into more than 24,000 cubes and smaller shards as the coaster passes underneath. A gentle camera cue frames the action.
+
+Continuous kerbs and reflective studs line **both sides of the complete route**, including airborne sections. Close blossom gardens, irregular glossy voxel geodes, arcade towers and pixel sigils add depth against the more distant islands. Geometry is instanced in four batches. Peripheral shutter streaks increase with speed while keeping the center of the image readable.
+
+Five lime induction strips precede actual acceleration. Three missing track sections use raised launch ramps with matching upward velocity, ballistic flight, and landing compression/rebound. Gravity, banking and speed-dependent field of view are exaggerated. Gentle motion reduces banking, cockpit jolt, shield flashes and blur.
+
+Five combat waves contain **24 targets with three silhouettes**. Twin cockpit cannons automatically fire four-shot bursts; cyan bolts connect to targets, impacts flash, and enemies disintegrate into colored voxel debris with a +100 confirmation. Magenta counterfire brushes the cockpit shield. Launch, landing, lasers and destruction have soft sound cues shared by live playback and export.
 
 Three enclosed, faceted tunnels punctuate the route with alternating neon ribs. Enemy pixels have beveled edges, glossy reflections and emissive cores; the collision uses the sentinel’s actual colored cubes and a fixed obstacle. Encounters and effects follow route positions, so they stay synchronized when the soundtrack changes length.
 
@@ -58,7 +64,7 @@ For a public album campaign, the next pass should add the chosen mastered track,
 
 ## Render a video
 
-Use the film icon in the lower-right corner. Export choices include **1920 × 1080** or **3840 × 2160**, both at **60 fps**, with a full-ride, 12-second collision-preview, or arcade-arena preview option. The MP4 includes H.264 video and AAC stereo audio, with the selected soundtrack and soft effects baked in and the interface excluded.
+Use the film icon in the lower-right corner. Export choices include **1920 × 1080** or **3840 × 2160**, both at **60 fps**, with a full-ride, 12-second collision-preview, arcade-arena, or boost/combat/jump preview option. The MP4 includes H.264 video and AAC stereo audio, with the selected soundtrack and soft effects baked in and the interface excluded.
 
 Each frame is rendered at its exact timeline position and then encoded with WebCodecs via Mediabunny. This is offline frame-by-frame rendering, not screen recording; an overloaded computer takes longer to finish rather than dropping video frames. Cinematic bloom and 4× multisampling are enabled during export. Keep the tab open until the download appears. Rendering requires browser H.264 and AAC encoding support; Chrome or Edge is recommended.
 
@@ -71,6 +77,9 @@ When running locally with Vite, films are automatically saved to `renders/`, whi
 - `src/motion.js` — integrated gravity, drag, chain lifts, and boosters.
 - `src/sculpt.js` — volumetric surface-voxel characters and articulated titan.
 - `src/arena.js` — arcade architecture, physical near misses, light spill and progressive fracture.
+- `src/trackside.js` — continuous near scenery, crystal clusters, booster pads and landing markers.
+- `src/combat.js` — automatic twin cannons, enemy waves, retaliation and deterministic destruction.
+- `src/rush-pass.js` — restrained peripheral speed streaks, without frame history.
 - `src/encounters.js` — scripted pixel characters, pursuit, projectiles, and bursts.
 - `src/story.js` — shared route markers for collision, tunnels and sound.
 - `src/tunnels.js` — enclosed tunnel geometry and illuminated portals.

@@ -79,7 +79,7 @@ export function crystalMaterial(intensity = 0.4) {
       vec2 gridDistance = min(gridUv, 1.0 - gridUv);
       float grid = 1.0 - smoothstep(0.015, 0.045, min(gridDistance.x, gridDistance.y));
       float shimmer = 0.93 + 0.07 * sin(crystalTime * 1.4 + crystalSeed * 2.7);
-      totalEmissiveRadiance *= (0.48 + edge * 1.5 + grid * 0.2) * shimmer;
+      totalEmissiveRadiance *= (0.38 + edge * 1.1 + grid * 0.16) * shimmer;
     `,
     );
   };

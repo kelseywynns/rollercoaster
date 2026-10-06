@@ -122,21 +122,27 @@ export async function renderVideo({
     duration,
     world.motion.progressAt(ARENA.impact) * duration + 6,
   );
+  const actionStart = world.motion.progressAt(0.277) * duration;
+  const actionEnd = world.motion.progressAt(0.356) * duration;
   const renderDuration = preview
-    ? previewScene === "arena"
-      ? arenaEnd - arenaStart
-      : Math.min(12, duration)
+    ? previewScene === "action"
+      ? actionEnd - actionStart
+      : previewScene === "arena"
+        ? arenaEnd - arenaStart
+        : Math.min(12, duration)
     : duration;
   const previewStart =
-    previewScene === "arena"
-      ? arenaStart
-      : Math.max(
-          0,
-          Math.min(
-            duration - renderDuration,
-            world.motion.progressAt(CRASH.cameraT) * duration - 4,
-          ),
-        );
+    previewScene === "action"
+      ? actionStart
+      : previewScene === "arena"
+        ? arenaStart
+        : Math.max(
+            0,
+            Math.min(
+              duration - renderDuration,
+              world.motion.progressAt(CRASH.cameraT) * duration - 4,
+            ),
+          );
   const target = new BufferTarget();
   const output = new Output({
     format: new Mp4OutputFormat({ fastStart: "in-memory" }),
