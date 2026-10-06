@@ -19,12 +19,14 @@ Open the localhost URL printed by Vite. `npm run build` produces a static site i
 
 ## The experience
 
-The built-in ride lasts 2:30 and progresses through four acts:
+The built-in ride lasts 3:00 and progresses through four acts:
 
-1. **The awakening** — a gentle departure through floating gardens.
-2. **Neon ascent** — climbing turns and cool, crystalline colors.
-3. **Pixel freefall** — steep descents through warm coral scenery.
-4. **Hyperdrive** — sweeping turns and a sequence of illuminated gates.
+1. **The awakening** — a slow departure through floating gardens with a curious pixel companion.
+2. **Neon ascent** — a long chain-lift climb, cool crystalline colors, and a sentinel appearing at the crest.
+3. **Pixel freefall** — gravity-driven drops, a firing sentinel, and near-miss pixel bursts.
+4. **Hyperdrive** — a segmented voxel dragon chasing alongside the car, attacking drones, and illuminated boost gates.
+
+Motion is integrated from gravitational potential energy, drag, lift speed, and late-ride boosters. Descents gain speed and subsequent climbs lose it. The opening spends roughly the first 70 seconds building anticipation before the first large drop. Character encounters are scripted; no shooting controls or gameplay are needed.
 
 Select a chapter on the opening screen to preview that section. Once aboard, drag to look around, scrub the timeline, or hide the controls.
 
@@ -46,10 +48,22 @@ The default soundtrack, **Daydream circuit**, is a simple generative ambient dem
 
 For a public album campaign, the next pass should add the chosen mastered track, artist/album artwork and links, and deliberate musical cue points. Importing a file here previews it locally; it does not publish or embed that track for visitors.
 
+## Render a video
+
+Use the film icon in the lower-right corner. Export choices include **1920 × 1080** or **3840 × 2160**, both at **60 fps**, with a full-ride or 12-second scene-preview option. The MP4 includes H.264 video and AAC stereo audio, with the selected soundtrack baked in and the interface excluded.
+
+Each frame is rendered at its exact timeline position and then encoded with WebCodecs via Mediabunny. This is offline frame-by-frame rendering, not screen recording; an overloaded computer takes longer to finish rather than dropping video frames. Cinematic bloom and 4× multisampling are enabled during export. Keep the tab open until the download appears. Rendering requires browser H.264 and AAC encoding support; Chrome or Edge is recommended.
+
+When running locally with Vite, films are automatically saved to `renders/`, which is excluded from Git. The published site offers a browser download. Uploading a private album track locally does not publish it, but an exported MP4 embeds the selected track.
+
 ## Project layout
 
 - `src/world.js` — deterministic voxel scenery, spline track, camera, lighting, bloom.
-- `src/ride.js` — playback state, timing, acceleration, chapter metadata.
+- `src/ride.js` — playback state, timing, and chapter metadata.
+- `src/motion.js` — integrated gravity, drag, chain lifts, and boosters.
+- `src/encounters.js` — scripted pixel characters, pursuit, projectiles, and bursts.
+- `src/export-video.js` — deterministic 60 fps MP4 export and offline demo audio.
+- `src/render-ui.js` — render settings, progress, cancellation, and download.
 - `src/audio.js` — local audio playback, analyser, generated demo soundtrack.
 - `src/main.js` — interface and playback coordination.
 - `src/style.css` — responsive interface.

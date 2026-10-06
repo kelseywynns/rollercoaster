@@ -6,3 +6,4 @@ dist/
 !.env.example
 test-results/
 .local/
+renders/

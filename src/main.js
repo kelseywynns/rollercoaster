@@ -1,6 +1,7 @@
 import "./style.css";
 import { VoxelWorld } from "./world.js";
 import { Soundtrack } from "./audio.js";
+import { installRenderUI } from "./render-ui.js";
 import {
   CHAPTERS,
   DEFAULT_DURATION,
@@ -48,7 +49,7 @@ document.querySelector("#app").innerHTML = `
       <div class="eyebrow"><span class="status-dot"></span> AN IMMERSIVE AUDIOVISUAL JOURNEY</div>
       <h1 id="hero-title">Lose yourself.<br>Find the <span>rush.</span></h1>
       <p>A little nostalgia. A whole new world.<br>Ride through a living pixel universe, where<br class="desktop-break"> every turn takes you closer to the music.</p>
-      <div class="hero-actions"><button id="start-button" class="primary-button" disabled>Building your world <span class="loading-dots">···</span></button><span class="ride-length"><span id="duration-label">2:30</span> OF PURE ESCAPE<br><span>Just sit back. We’ll take you there.</span></span></div>
+      <div class="hero-actions"><button id="start-button" class="primary-button" disabled>Building your world <span class="loading-dots">···</span></button><span class="ride-length"><span id="duration-label">3:00</span> OF PURE ESCAPE<br><span>Just sit back. We’ll take you there.</span></span></div>
       <button id="headphone-button" class="headphone-note">${icon("headphones")} Better with headphones <span>↗</span></button>
     </section>
 
@@ -64,7 +65,7 @@ document.querySelector("#app").innerHTML = `
 
     <section class="ride-hud" aria-label="Ride controls" hidden>
       <div class="ride-top"><button class="secondary-button" id="exit-button">${icon("back")} Leave the ride</button><div class="ride-chapter"><span id="ride-chapter-tag"></span><strong id="ride-chapter-name"></strong></div><button class="icon-button" id="hide-hud-button" aria-label="Hide ride controls" title="Hide controls (H)">${icon("close")}</button></div>
-      <div class="ride-bottom"><button id="pause-button" class="round-button" aria-label="Pause ride">${icon("pause")}</button><div class="ride-timeline"><div class="timeline-labels"><span id="ride-time">0:00</span><span id="ride-now-playing">DAYDREAM CIRCUIT</span><span id="ride-total">2:30</span></div><input id="progress" aria-label="Ride progress" type="range" min="0" max="1000" value="0" step="1" /><div class="timeline-chapters"><span>AWAKENING</span><span>ASCENT</span><span>FREEFALL</span><span>HYPERDRIVE</span></div></div><div class="speed-stat"><strong id="speed-value">24</strong><span>KM/H</span></div></div>
+      <div class="ride-bottom"><button id="pause-button" class="round-button" aria-label="Pause ride">${icon("pause")}</button><div class="ride-timeline"><div class="timeline-labels"><span id="ride-time">0:00</span><span id="ride-now-playing">DAYDREAM CIRCUIT</span><span id="ride-total">3:00</span></div><input id="progress" aria-label="Ride progress" type="range" min="0" max="1000" value="0" step="1" /><div class="timeline-chapters"><span>AWAKENING</span><span>ASCENT</span><span>FREEFALL</span><span>HYPERDRIVE</span></div></div><div class="speed-stat"><strong id="speed-value">24</strong><span>KM/H</span></div></div>
       <div class="ride-hint">DRAG TO LOOK AROUND <span>·</span> SPACE TO PAUSE <span>·</span> H TO HIDE</div>
     </section>
     <button id="show-hud-button" class="secondary-button" hidden>Show controls</button>
@@ -95,6 +96,7 @@ let world,
   hudHidden = false,
   soundFailed = false;
 let toastTimer;
+let exporting = false;
 function toast(message) {
   $("#toast").textContent = message;
   $("#toast").classList.add("visible");
@@ -353,6 +355,10 @@ $("#world").addEventListener("pointercancel", releaseLook);
 
 function animate(now) {
   requestAnimationFrame(animate);
+  if (exporting) {
+    lastTime = now;
+    return;
+  }
   const delta = Math.min((now - (lastTime || now)) / 1000, 0.05);
   lastTime = now;
   if (!document.hidden && ride.state !== "paused") animationTime += delta;
@@ -366,11 +372,12 @@ function animate(now) {
   const energy = soundtrack.update(ride.elapsed, ride.progress);
   if (!document.hidden && world)
     world.render({
-      time: animationTime,
+      time: ride.state === "idle" ? animationTime : ride.elapsed,
       progress: ride.progress,
       mode: ride.state,
       energy,
       gentle: $("#gentle-motion").checked,
+      duration: ride.duration,
       delta,
     });
   if (ride.state === "riding" || ride.state === "paused") {
@@ -385,8 +392,7 @@ function animate(now) {
     if (document.activeElement !== $("#progress"))
       $("#progress").value = Math.round(ride.progress * 1000);
     $("#progress").style.setProperty("--progress", `${ride.progress * 100}%`);
-    const speed =
-      (world.length / ride.duration) * (0.38 + 1.24 * ride.progress) * 3.6;
+    const speed = world.motion.sample(ride.progress, ride.duration).speed * 3.6;
     $("#speed-value").textContent = Math.round(
       ride.state === "paused" ? 0 : speed,
     );
@@ -436,3 +442,14 @@ if (import.meta.env.DEV)
     startRide,
     exitRide,
   };
+
+installRenderUI({
+  getWorld: () => world,
+  ride,
+  soundtrack,
+  pauseRide,
+  setExporting: (value) => {
+    exporting = value;
+  },
+  toast,
+});

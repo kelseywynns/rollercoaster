@@ -1614,3 +1614,61 @@ kbd {
     scroll-behavior: auto !important;
   }
 }
+
+.render-spec {
+  display: flex;
+  gap: 8px;
+  margin: 25px 0;
+}
+.render-spec span {
+  font: 400 8px var(--mono);
+  letter-spacing: 1px;
+  padding: 8px 10px;
+  color: #b8e1d2;
+  border: 1px solid #a0d5bf38;
+  border-radius: 3px;
+}
+.render-label {
+  display: block;
+  font-size: 11px;
+  color: #b4bfd0;
+  margin: 20px 0 9px;
+}
+#render-dialog select {
+  width: 100%;
+  padding: 13px;
+  font-size: 12px;
+}
+.render-note {
+  font-size: 10px;
+  line-height: 1.8;
+  color: #929eb5;
+  margin-top: 22px;
+}
+#render-progress-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 16px;
+}
+#render-progress {
+  width: 100%;
+  height: 6px;
+  accent-color: #ffaf91;
+}
+#render-status {
+  font-size: 12px;
+  font-weight: 500;
+  color: #f5d7c4;
+}
+#render-remaining {
+  font: 400 9px var(--mono);
+  color: #98a8bf;
+}
+#render-cancel {
+  margin: 0 auto;
+}
+#render-download {
+  text-align: center;
+  background: #b5e6cc;
+}

@@ -3,7 +3,9 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { clamp, trackProgress } from "./ride.js";
+import { clamp } from "./ride.js";
+import { createMotionProfile } from "./motion.js";
+import { Encounters } from "./encounters.js";
 
 const up = new THREE.Vector3(0, 1, 0);
 const dummy = new THREE.Object3D();
@@ -66,11 +68,11 @@ export const trackPoints = [
   [-146, 36, -940],
   [-76, 35, -1060],
   [45, 55, -1150],
-  [163, 108, -1250],
-  [185, 195, -1375],
-  [95, 224, -1480],
-  [-25, 224, -1560],
-  [-105, 198, -1660],
+  [163, 92, -1250],
+  [185, 122, -1375],
+  [95, 140, -1480],
+  [-25, 134, -1560],
+  [-105, 111, -1660],
   [-125, 64, -1800],
   [-10, 29, -1900],
   [155, 43, -1990],
@@ -124,6 +126,7 @@ export class VoxelWorld {
     this.curve.arcLengthDivisions = 4000;
     this.curve.updateArcLengths();
     this.length = this.curve.getLength();
+    this.motion = createMotionProfile(this.curve);
     this.solids = new VoxelBatch(this.scene);
     this.glows = new VoxelBatch(this.scene, true);
     this.floaters = [];
@@ -135,6 +138,8 @@ export class VoxelWorld {
     this.makeParticles();
     this.solids.build();
     this.glowMesh = this.glows.build();
+    this.encounters = new Encounters(this.scene);
+    this.makeCar();
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.4, 0.65, 0.8);
@@ -156,6 +161,38 @@ export class VoxelWorld {
     const fill = new THREE.DirectionalLight("#fff0e2", 1.9);
     fill.position.set(20, 190, 280);
     this.scene.add(fill);
+  }
+
+  makeCar() {
+    this.scene.add(this.camera);
+    this.car = new THREE.Group();
+    this.camera.add(this.car);
+    const navy = new THREE.MeshStandardMaterial({
+      color: "#172e43",
+      roughness: 0.4,
+      metalness: 0.4,
+    });
+    const mint = new THREE.MeshStandardMaterial({
+      color: "#68cbb5",
+      roughness: 0.35,
+      metalness: 0.3,
+    });
+    const coral = new THREE.MeshBasicMaterial({ color: "#ffb27e" });
+    const add = (x, y, z, w, h, d, mat) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      mesh.position.set(x, y, z);
+      this.car.add(mesh);
+    };
+    add(0, -2.2, -3.9, 4.5, 0.65, 0.6, navy);
+    add(0, -1.85, -3.9, 4.6, 0.12, 0.65, mint);
+    add(0, -1.91, -3.54, 4.2, 0.08, 0.06, coral);
+    for (const side of [-1, 1]) {
+      add(side * 2.18, -1.95, -2.7, 0.28, 0.8, 2.8, navy);
+      add(side * 2.18, -1.51, -2.7, 0.32, 0.08, 2.8, mint);
+      add(side * 1.4, -1.85, -2.2, 0.16, 0.9, 0.16, navy);
+    }
+    add(0, -1.4, -2.2, 2.95, 0.17, 0.17, navy);
+    this.car.visible = false;
   }
 
   makeSky() {
@@ -684,17 +721,26 @@ export class VoxelWorld {
   }
 
   resize() {
-    const w = this.container.clientWidth,
-      h = this.container.clientHeight;
+    const w = this.exportSize?.width || this.container.clientWidth,
+      h = this.exportSize?.height || this.container.clientHeight;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(w, h);
+    this.renderer.setSize(w, h, !this.exportSize);
     this.composer?.setSize(w, h);
   }
 
-  render({ time, progress, mode, energy = 0, gentle = false, delta = 0.016 }) {
+  render({
+    time,
+    progress,
+    mode,
+    energy = 0,
+    gentle = false,
+    delta = 0.016,
+    duration = 180,
+  }) {
     this.energy += (energy - this.energy) * Math.min(1, delta * 5);
     const calm = gentle || this.reducedMotion;
+    this.car.visible = mode !== "idle";
     if (mode === "idle") {
       const sway = calm ? 0 : Math.sin(time * 0.12) * 3;
       this.camera.position.set(
@@ -705,7 +751,7 @@ export class VoxelWorld {
       this.camera.lookAt(67, 66, -245);
       this.camera.fov = this.camera.aspect < 0.8 ? 72 : 59;
     } else {
-      const t = trackProgress(progress),
+      const { t, speed } = this.motion.sample(progress, duration),
         { point, tangent, normal } = this.frameAt(t);
       this.camera.position.copy(point).addScaledVector(normal, 3.8);
       const target = this.curve.getPointAt(
@@ -720,7 +766,14 @@ export class VoxelWorld {
       this.camera.rotateZ(calm ? 0 : clamp(turn * 2.2, -0.24, 0.24));
       this.camera.rotateY(this.look.x * 0.34);
       this.camera.rotateX(this.look.y * 0.19);
-      this.camera.fov = calm ? 65 : 64 + progress * 14 + this.energy * 1.5;
+      const rush = clamp((speed - 12) / 65);
+      this.camera.fov = calm ? 65 : 59 + rush * 19 + this.energy * 1.0;
+      // A restrained vertical tremor reads as track contact; lift hills feel steadier.
+      if (!calm)
+        this.camera.position.addScaledVector(
+          normal,
+          Math.sin(time * 27) * 0.016 * rush,
+        );
     }
     this.camera.updateProjectionMatrix();
     this.sky.position.copy(this.camera.position);
@@ -730,6 +783,14 @@ export class VoxelWorld {
       this.camera.position.z - 1150,
     );
     this.stars.position.z = this.camera.position.z * 0.95;
+    const motion = this.motion.sample(progress, duration);
+    this.encounters.update({
+      time,
+      progress,
+      frame: this.frameAt(motion.t),
+      active: mode !== "idle",
+      calm,
+    });
     if (!calm)
       this.floaters.forEach(({ group, y, phase }) => {
         group.position.y = y + Math.sin(time * 0.8 + phase) * 3.5;

@@ -1,4 +1,4 @@
-export const DEFAULT_DURATION = 150;
+export const DEFAULT_DURATION = 180;
 
 export const CHAPTERS = [
   {
@@ -33,10 +33,6 @@ export const CHAPTERS = [
 
 export function clamp(value, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
-}
-export function trackProgress(progress) {
-  const p = clamp(progress);
-  return 0.38 * p + 0.62 * p * p;
 }
 export function chapterIndex(progress) {
   return Math.min(3, Math.floor(clamp(progress) * 4));

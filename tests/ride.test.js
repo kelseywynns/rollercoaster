@@ -1,11 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  RideClock,
-  trackProgress,
-  chapterIndex,
-  formatTime,
-} from "../src/ride.js";
+import { RideClock, chapterIndex, formatTime } from "../src/ride.js";
 
 test("a ride pauses without advancing and resumes to completion", () => {
   const ride = new RideClock(150);
@@ -38,21 +33,6 @@ test("chapter previews and imported audio duration share a normalized timeline",
   assert.equal(ride.progress, 1);
   ride.seek(-1);
   assert.equal(ride.progress, 0);
-});
-
-test("the camera advances continuously and accelerates throughout the journey", () => {
-  let previousDistance = 0,
-    previousSpeed = 0;
-  for (let i = 1; i <= 1000; i++) {
-    const distance = trackProgress(i / 1000);
-    const speed = distance - previousDistance;
-    assert.ok(distance > previousDistance);
-    assert.ok(speed >= previousSpeed - 1e-12);
-    previousSpeed = speed;
-    previousDistance = distance;
-  }
-  assert.equal(previousDistance, 1);
-  assert.equal(trackProgress(-1), 0);
 });
 
 test("time labels handle an album track longer than the demo", () => {
